@@ -17,7 +17,7 @@ venv\Scripts\activate  # On Windows
 ### 2. Install Dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install -r server/requirements.txt
 ```
 
 ### 3. Generate Security Keys
@@ -37,6 +37,7 @@ Copy these values to your `.env` file.
 ### 4. Run the Application
 
 ```bash
+cd server
 uvicorn app.main:app --reload
 ```
 
@@ -97,7 +98,7 @@ pip install -r requirements.txt
 If you encounter database errors, delete and recreate:
 
 ```bash
-rm aprep.db
+rm server/aprep.db
 # Restart the server - it will recreate tables automatically
 ```
 

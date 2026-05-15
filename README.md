@@ -61,13 +61,13 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 ### 3. Install dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install -r server/requirements.txt
 ```
 
 ### 4. Set up environment variables
 
 ```bash
-cp .env.example .env
+cp server/.env.example server/.env
 ```
 
 Edit `.env` and configure:
@@ -102,6 +102,7 @@ Copy these values to your `.env` file.
 ### Start the server
 
 ```bash
+cd server
 uvicorn app.main:app --reload
 ```
 
@@ -297,32 +298,36 @@ APREP automatically generates trait-specific test questions:
 ## 📁 Project Structure
 
 ```
-aprep_backend/
-├── app/
-│   ├── main.py              # FastAPI application
-│   ├── config.py            # Configuration management
-│   ├── database.py          # Database setup
-│   ├── models.py            # SQLAlchemy models
-│   ├── schemas.py           # Pydantic schemas
-│   ├── routers/             # API endpoints
-│   │   ├── auth.py          # Authentication
-│   │   ├── projects.py      # Project management
-│   │   ├── prompts.py       # Prompt management
-│   │   ├── question_slots.py # Question slots
-│   │   ├── evaluations.py   # Evaluations
-│   │   └── ollama.py        # Ollama integration
-│   ├── services/            # Business logic
-│   │   ├── endpoint_client.py    # HTTP client
-│   │   ├── ollama_client.py      # Ollama client
-│   │   ├── evaluator.py          # Evaluation engine
-│   │   ├── scoring.py            # Scoring logic
-│   │   └── report_generator.py   # Report export
-│   └── utils/               # Utilities
-│       ├── auth.py          # JWT utilities
-│       └── security.py      # Token encryption
-├── requirements.txt
-├── .env.example
-├── .gitignore
+Bob_Hackathon-APREP/
+├── server/                  # Backend (FastAPI)
+│   ├── app/
+│   │   ├── main.py              # FastAPI application
+│   │   ├── config.py            # Configuration management
+│   │   ├── database.py          # Database setup
+│   │   ├── models.py            # SQLAlchemy models
+│   │   ├── schemas.py           # Pydantic schemas
+│   │   ├── routers/             # API endpoints
+│   │   │   ├── auth.py          # Authentication
+│   │   │   ├── projects.py      # Project management
+│   │   │   ├── prompts.py       # Prompt management
+│   │   │   ├── question_slots.py # Question slots
+│   │   │   ├── evaluations.py   # Evaluations
+│   │   │   └── ollama.py        # Ollama integration
+│   │   ├── services/            # Business logic
+│   │   │   ├── endpoint_client.py    # HTTP client
+│   │   │   ├── ollama_client.py      # Ollama client
+│   │   │   ├── evaluator.py          # Evaluation engine
+│   │   │   ├── scoring.py            # Scoring logic
+│   │   │   └── report_generator.py   # Report export
+│   │   └── utils/               # Utilities
+│   │       ├── auth.py          # JWT utilities
+│   │       └── security.py      # Token encryption
+│   ├── requirements.txt
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── setup_guide.md
+│   └── IMPLEMENTATION_SUMMARY.md
+├── client/                  # Frontend (Streamlit - Coming Soon)
 └── README.md
 ```
 
@@ -366,7 +371,7 @@ aprep_backend/
 
 ```bash
 # Delete and recreate database
-rm aprep.db
+rm server/aprep.db
 # Restart the server - it will recreate tables
 ```
 
@@ -384,7 +389,7 @@ ollama serve
 
 ```bash
 # Reinstall dependencies
-pip install -r requirements.txt --force-reinstall
+pip install -r server/requirements.txt --force-reinstall
 ```
 
 ### Authentication errors
