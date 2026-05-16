@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { apiClient } from '@/lib/api';
 import { Project, UpdateProjectRequest } from '@/types';
+import { Key } from 'lucide-react';
 
 interface EditProjectModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ export default function EditProjectModal({
   const [requiresToken, setRequiresToken] = useState(false);
   const [requestFieldName, setRequestFieldName] = useState('message');
   const [responseFieldName, setResponseFieldName] = useState('answer');
+  const [showTokenField, setShowTokenField] = useState(false);
+  const [token, setToken] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -48,6 +51,19 @@ export default function EditProjectModal({
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.detail || 'Failed to update project');
+    },
+  });
+
+  const tokenMutation = useMutation({
+    mutationFn: (tokenData: { token: string }) =>
+      apiClient.updateProjectToken(project.id, tokenData),
+    onSuccess: () => {
+      toast.success('Token updated successfully!');
+      setToken('');
+      setShowTokenField(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.detail || 'Failed to update token');
     },
   });
 
@@ -77,6 +93,14 @@ export default function EditProjectModal({
       request_field_name: requestFieldName.trim(),
       response_field_name: responseFieldName.trim(),
     });
+  };
+
+  const handleTokenUpdate = () => {
+    if (!token.trim()) {
+      toast.error('Token is required');
+      return;
+    }
+    tokenMutation.mutate({ token: token.trim() });
   };
 
   return (
@@ -109,6 +133,64 @@ export default function EditProjectModal({
             <span className="text-sm text-gray-700">Requires Authentication Token</span>
           </label>
         </div>
+
+        {requiresToken && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Key className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900">Authentication Token</span>
+              </div>
+              {!showTokenField && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setShowTokenField(true)}
+                >
+                  Update Token
+                </Button>
+              )}
+            </div>
+            {showTokenField ? (
+              <div className="space-y-3">
+                <Input
+                  label="New Token"
+                  type="password"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="Enter new authentication token"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleTokenUpdate}
+                    isLoading={tokenMutation.isPending}
+                  >
+                    Save Token
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setShowTokenField(false);
+                      setToken('');
+                    }}
+                    disabled={tokenMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-blue-700">
+                Token is securely stored. Click "Update Token" to change it.
+              </p>
+            )}
+          </div>
+        )}
 
         <Input
           label="Request Field Name"

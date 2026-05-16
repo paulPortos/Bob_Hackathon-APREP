@@ -65,35 +65,35 @@ export default function HomePage() {
       <div className="min-h-screen bg-gray-50">
         <Navbar onCreateProject={() => setIsCreateModalOpen(true)} />
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-[1400px] mx-auto px-6 sm:px-8 lg:px-12 py-10">
           {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">My Projects</h1>
-            <p className="text-gray-600 mt-2">
+          <div className="mb-10">
+            <h1 className="text-4xl font-bold text-gray-900">My Projects</h1>
+            <p className="text-lg text-gray-600 mt-3">
               Manage your AI agent evaluation projects
             </p>
           </div>
 
           {/* Loading State */}
           {isLoading && (
-            <div className="flex justify-center items-center py-20">
+            <div className="flex justify-center items-center py-32">
               <Spinner size="lg" />
             </div>
           )}
 
           {/* Empty State */}
           {!isLoading && projects?.length === 0 && (
-            <div className="text-center py-20">
-              <FolderOpen className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <div className="text-center py-32">
+              <FolderOpen className="mx-auto h-20 w-20 text-gray-400 mb-6" />
+              <h3 className="text-xl font-medium text-gray-900 mb-3">
                 No projects yet
               </h3>
-              <p className="text-gray-600 mb-6">
+              <p className="text-gray-600 mb-8 text-lg">
                 Get started by creating your first project
               </p>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                className="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
               >
                 Create Project
               </button>
@@ -102,7 +102,7 @@ export default function HomePage() {
 
           {/* Projects Grid */}
           {!isLoading && projects && projects.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
               {projects.map((project) => (
                 <ProjectCard
                   key={project.id}

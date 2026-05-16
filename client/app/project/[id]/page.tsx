@@ -131,6 +131,15 @@ function PromptsTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-6">
+      {/* Info Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 className="text-sm font-semibold text-blue-900 mb-2">About Agent Prompts</h4>
+        <p className="text-sm text-blue-800">
+          This prompt is used <strong>by your AI agent</strong> to guide its behavior and responses.
+          The evaluator will analyze how well your agent follows this prompt during evaluations.
+          Storing prompts here helps you track your agent's behavior over time as you improve it.
+        </p>
+      </div>
       {isLoading ? (
         <Spinner />
       ) : prompt ? (

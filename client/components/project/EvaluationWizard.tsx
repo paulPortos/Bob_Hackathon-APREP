@@ -49,12 +49,17 @@ export default function EvaluationWizard({
   const selectedSlot = slots?.find(s => s.id === selectedSlotId);
 
   const runEvaluationMutation = useMutation({
-    mutationFn: () => apiClient.runEvaluation(projectId, {
-      slot_id: selectedSlotId,
-      prompt_id: selectedPromptId || undefined,
-      include_trait_tests: includeTraitTests,
-      trait_test_count: includeTraitTests ? traitTestCount : undefined,
-    }),
+    mutationFn: () => {
+      const payload: any = {
+        slot_id: selectedSlotId,
+        prompt_id: selectedPromptId || undefined,
+        include_trait_tests: includeTraitTests,
+      };
+      if (includeTraitTests) {
+        payload.trait_test_count = traitTestCount;
+      }
+      return apiClient.runEvaluation(projectId, payload);
+    },
     onSuccess: () => {
       setIsRunning(false);
       toast.success('Evaluation completed successfully!');

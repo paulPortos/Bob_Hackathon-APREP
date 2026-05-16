@@ -24,54 +24,52 @@ export default function ProjectCard({ project, onDelete }: ProjectCardProps) {
   };
 
   return (
-    <Card hover onClick={handleCardClick} className="p-6">
-      <div className="space-y-4">
+    <Card hover onClick={handleCardClick} className="p-8 h-full flex flex-col">
+      <div className="space-y-5 flex-1 flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xl font-bold text-gray-900 mb-2 truncate">
               {project.name}
             </h3>
             <div className="flex items-center text-sm text-gray-500">
-              <ExternalLink className="h-3 w-3 mr-1" />
-              <span className="truncate">{truncate(project.endpoint_url, 40)}</span>
+              <ExternalLink className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span className="truncate">{truncate(project.endpoint_url, 45)}</span>
             </div>
           </div>
         </div>
 
         {/* Metadata */}
-        <div className="flex items-center text-xs text-gray-500 space-x-4">
-          <div className="flex items-center">
-            <Calendar className="h-3 w-3 mr-1" />
-            <span>Created {formatDate(project.created_at)}</span>
-          </div>
+        <div className="flex items-center text-sm text-gray-500">
+          <Calendar className="h-4 w-4 mr-2" />
+          <span>Created {formatDate(project.created_at)}</span>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+        <div className="grid grid-cols-3 gap-6 py-6 border-y border-gray-200 flex-1">
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary-600">-</div>
-            <div className="text-xs text-gray-500">Prompts</div>
+            <div className="text-3xl font-bold text-primary-600 mb-1">-</div>
+            <div className="text-sm text-gray-500 font-medium">Prompts</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary-600">-</div>
-            <div className="text-xs text-gray-500">Slots</div>
+            <div className="text-3xl font-bold text-primary-600 mb-1">-</div>
+            <div className="text-sm text-gray-500 font-medium">Slots</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary-600">-</div>
-            <div className="text-xs text-gray-500">Evaluations</div>
+            <div className="text-3xl font-bold text-primary-600 mb-1">-</div>
+            <div className="text-sm text-gray-500 font-medium">Evaluations</div>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex space-x-2 pt-4 border-t border-gray-200">
+        <div className="flex space-x-3 pt-2">
           <Button
             size="sm"
             variant="secondary"
             className="flex-1"
             onClick={() => router.push(`/project/${project.id}`)}
           >
-            <Settings className="h-4 w-4 mr-1" />
+            <Settings className="h-4 w-4 mr-2" />
             View
           </Button>
           <Button
