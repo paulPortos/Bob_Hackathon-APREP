@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import Modal from '@/components/ui/Modal';
@@ -15,6 +15,11 @@ interface EvaluationDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   evaluationId: string;
+}
+
+function formatTraitType(traitType: string | null): string {
+  if (!traitType) return 'trait';
+  return traitType.replace(/_/g, ' ');
 }
 
 export default function EvaluationDetailsModal({
@@ -191,15 +196,17 @@ export default function EvaluationDetailsModal({
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {evaluation.results.map((result) => (
-                    <>
-                      <tr key={result.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                          {result.question_text}
-                          {result.is_trait_test && (
-                            <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">
-                              {result.trait_type}
-                            </span>
-                          )}
+                    <Fragment key={result.id}>
+                      <tr className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm text-gray-900 min-w-[28rem] max-w-[36rem]">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="flex-1 truncate min-w-0">{result.question_text}</span>
+                            {result.is_trait_test && (
+                              <span className="flex-none whitespace-nowrap px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs font-medium capitalize">
+                                {formatTraitType(result.trait_type)}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${getScoreColor(result.accuracy_score)}`}>
@@ -269,7 +276,7 @@ export default function EvaluationDetailsModal({
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

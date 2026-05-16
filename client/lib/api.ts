@@ -14,11 +14,50 @@ import type {
   QuestionSlot,
   CreateQuestionSlotRequest,
   GenerateQuestionsRequest,
+  GenerateQuestionsResponse,
   UpdateQuestionSlotRequest,
   Evaluation,
   EvaluationDetails,
   RunEvaluationRequest,
 } from '@/types';
+
+export function getApiErrorMessage(error: unknown, fallback = 'Request failed'): string {
+  if (axios.isAxiosError(error)) {
+    const detail = error.response?.data?.detail;
+
+    if (typeof detail === 'string') {
+      return detail;
+    }
+
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((item) => {
+          if (typeof item === 'string') return item;
+          if (item && typeof item === 'object' && 'msg' in item) {
+            return String(item.msg);
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      if (messages.length > 0) {
+        return messages.join(', ');
+      }
+    }
+
+    if (error.response?.status) {
+      return `Request failed with status ${error.response.status}`;
+    }
+
+    return error.message || fallback;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -146,8 +185,8 @@ class ApiClient {
     await this.client.delete(`/question-slots/${slotId}`);
   }
 
-  async generateQuestions(projectId: string, data: GenerateQuestionsRequest): Promise<QuestionSlot> {
-    const response = await this.client.post<QuestionSlot>(`/projects/${projectId}/generate-questions`, data);
+  async generateQuestions(projectId: string, data: GenerateQuestionsRequest): Promise<GenerateQuestionsResponse> {
+    const response = await this.client.post<GenerateQuestionsResponse>(`/projects/${projectId}/generate-questions`, data);
     return response.data;
   }
 

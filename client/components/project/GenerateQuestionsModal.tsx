@@ -8,7 +8,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import toast from 'react-hot-toast';
-import { apiClient } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import { Sparkles } from 'lucide-react';
 
 const generateSchema = z.object({
@@ -59,9 +59,8 @@ export default function GenerateQuestionsModal({
       onSuccess();
       onClose();
       reset();
-    } catch (error: any) {
-      console.error('Error generating questions:', error);
-      toast.error(error.response?.data?.detail || 'Failed to generate questions');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Failed to generate questions'));
     } finally {
       setIsGenerating(false);
     }
@@ -144,7 +143,7 @@ export default function GenerateQuestionsModal({
           </p>
         </div>
 
-        {/* Use Current Prompt */}
+        {/* Use Current Agent Prompt */}
         <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <input
             type="checkbox"
@@ -154,7 +153,7 @@ export default function GenerateQuestionsModal({
           />
           <div className="flex-1">
             <label htmlFor="use_prompt" className="text-sm font-medium text-gray-700 cursor-pointer">
-              Use Current Prompt
+              Use Current Agent Prompt
             </label>
             <p className="text-xs text-gray-500 mt-1">
               Include your project's prompt in the AI context for more relevant questions

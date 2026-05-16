@@ -222,7 +222,7 @@ class EvaluationResultResponse(BaseModel):
 
 class EvaluationRequest(BaseModel):
     slot_id: str
-    prompt_id: Optional[str] = None  # If None, use latest prompt
+    prompt_id: str
     include_trait_tests: bool = True
     trait_test_count: int = Field(default=5, ge=1, le=10)
 

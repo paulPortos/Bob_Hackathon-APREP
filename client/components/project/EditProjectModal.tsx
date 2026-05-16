@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { apiClient } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import { Project, UpdateProjectRequest } from '@/types';
 import { Key } from 'lucide-react';
 
@@ -49,8 +49,8 @@ export default function EditProjectModal({
       toast.success('Project updated successfully!');
       onClose();
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to update project');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update project'));
     },
   });
 
@@ -62,8 +62,8 @@ export default function EditProjectModal({
       setToken('');
       setShowTokenField(false);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to update token');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Failed to update token'));
     },
   });
 

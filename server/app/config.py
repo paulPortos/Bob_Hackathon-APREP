@@ -9,8 +9,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://aprep_user:your_password@localhost:5432/aprep_db"
     
     # Ollama Configuration
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_default_model: str = "llama2"
+    # If ollama_base_url is empty/None, will use Ollama Cloud (https://api.ollama.com)
+    # If set, will use local Ollama instance
+    ollama_base_url: Optional[str] = None
+    ollama_default_model: str = "llama3.1"
     ollama_api_key: Optional[str] = None
     
     # Security

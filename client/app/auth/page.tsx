@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
-import { apiClient } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import { authUtils } from '@/lib/auth';
 import { useAuthStore } from '@/store/authStore';
 import Input from '@/components/ui/Input';
@@ -53,8 +53,8 @@ export default function AuthPage() {
       
       toast.success('Logged in successfully!');
       router.push('/home');
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Login failed');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Login failed'));
     }
   };
 
@@ -68,8 +68,8 @@ export default function AuthPage() {
       toast.success('Registration successful! Please login.');
       setActiveTab('login');
       registerForm.reset();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Registration failed');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Registration failed'));
     }
   };
 

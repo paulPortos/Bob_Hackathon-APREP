@@ -1,44 +1,103 @@
 import httpx
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from app.config import settings
 
 
 class OllamaClient:
-    """Client for interacting with Ollama API."""
+    """Client for interacting with Ollama API (Cloud or Local)."""
     
     def __init__(self):
-        self.base_url = settings.ollama_base_url
+        self.api_key = settings.ollama_api_key
         self.default_model = settings.ollama_default_model
         self.timeout = settings.default_timeout_seconds
+        
+        # Auto-detect Cloud vs Local
+        if not settings.ollama_base_url or settings.ollama_base_url.strip() == "":
+            # Use Ollama Cloud
+            self.base_url = "https://ollama.com"
+            self.is_cloud = True
+            print("✓ Using Ollama Cloud API")
+        else:
+            # Use Local Ollama
+            self.base_url = settings.ollama_base_url
+            self.is_cloud = False
+            print(f"✓ Using Local Ollama at {self.base_url}")
+    
+    def _get_headers(self) -> Dict[str, str]:
+        """Get headers for API requests."""
+        headers = {"Content-Type": "application/json"}
+        
+        if self.is_cloud and self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        
+        return headers
     
     async def list_models(self) -> List[Dict]:
         """List available Ollama models."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/tags")
+                if self.is_cloud:
+                    # Cloud API uses OpenAI-compatible format
+                    response = await client.get(
+                        f"{self.base_url}/v1/models",
+                        headers=self._get_headers()
+                    )
+                else:
+                    # Local API uses original Ollama format
+                    response = await client.get(f"{self.base_url}/api/tags")
+                
                 response.raise_for_status()
                 data = response.json()
-                return data.get("models", [])
+                
+                if self.is_cloud:
+                    return data.get("data", [])
+                else:
+                    return data.get("models", [])
         except Exception as e:
             raise Exception(f"Failed to list Ollama models: {str(e)}")
     
     async def generate(self, prompt: str, model: Optional[str] = None) -> str:
-        """Generate text using Ollama."""
+        """Generate text using Ollama (Cloud or Local)."""
         model = model or self.default_model
         
         try:
             async with httpx.AsyncClient(timeout=self.timeout * 2) as client:
-                response = await client.post(
-                    f"{self.base_url}/api/generate",
-                    json={
-                        "model": model,
-                        "prompt": prompt,
-                        "stream": False
-                    }
-                )
+                if self.is_cloud:
+                    # Cloud API uses OpenAI-compatible chat completions format
+                    response = await client.post(
+                        f"{self.base_url}/v1/chat/completions",
+                        headers=self._get_headers(),
+                        json={
+                            "model": model,
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": prompt
+                                }
+                            ],
+                            "stream": False
+                        }
+                    )
+                else:
+                    # Local API uses original Ollama format
+                    response = await client.post(
+                        f"{self.base_url}/api/generate",
+                        json={
+                            "model": model,
+                            "prompt": prompt,
+                            "stream": False
+                        }
+                    )
+                
                 response.raise_for_status()
                 data = response.json()
-                return data.get("response", "")
+                
+                if self.is_cloud:
+                    # Extract from OpenAI-compatible format
+                    return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                else:
+                    # Extract from Ollama format
+                    return data.get("response", "")
         except Exception as e:
             raise Exception(f"Failed to generate with Ollama: {str(e)}")
     
@@ -98,7 +157,7 @@ Questions:"""
         agent_answer: str,
         agent_prompt: Optional[str] = None,
         expected_answer: Optional[str] = None
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """Evaluate an agent's response using Ollama."""
         prompt = f"""Evaluate this AI agent response on a scale of 0-100 for each criterion.
 
@@ -192,9 +251,24 @@ Explanation: [brief explanation of the scores]"""
         """Check if Ollama is available."""
         try:
             async with httpx.AsyncClient(timeout=5) as client:
-                response = await client.get(f"{self.base_url}/api/tags")
-                return response.status_code == 200
-        except:
+                if self.is_cloud:
+                    # For cloud, check if we have an API key
+                    if not self.api_key:
+                        print("⚠ Ollama Cloud: No API key provided")
+                        return False
+                    
+                    # Try to list models to verify API key works
+                    response = await client.get(
+                        f"{self.base_url}/v1/models",
+                        headers=self._get_headers()
+                    )
+                    return response.status_code == 200
+                else:
+                    # For local, check if server is running
+                    response = await client.get(f"{self.base_url}/api/tags")
+                    return response.status_code == 200
+        except Exception as e:
+            print(f"⚠ Ollama availability check failed: {str(e)}")
             return False
 
 

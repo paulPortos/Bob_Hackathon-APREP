@@ -7,7 +7,7 @@ import { z } from 'zod';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
-import { apiClient } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import type { Prompt } from '@/types';
 
 const promptSchema = z.object({
@@ -55,9 +55,8 @@ export default function PromptModal({
       onSuccess();
       onClose();
       reset();
-    } catch (error: any) {
-      console.error('Error saving prompt:', error);
-      toast.error(error.response?.data?.detail || 'Failed to save prompt');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Failed to save prompt'));
     } finally {
       setIsSubmitting(false);
     }
@@ -112,13 +111,13 @@ export default function PromptModal({
             className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm ${
               errors.content ? 'border-red-500' : 'border-gray-300'
             }`}
-            placeholder="Enter your system prompt here...&#10;&#10;Example:&#10;You are a helpful AI assistant. Your role is to..."
+            placeholder="Enter your agent prompt here...&#10;&#10;Example:&#10;You are a helpful AI assistant. Your role is to..."
           />
           {errors.content && (
             <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
           )}
           <p className="mt-1 text-xs text-gray-500">
-            This prompt will be used as the system message for your AI agent during evaluations.
+            This prompt describes your target AI agent's intended behavior for evaluations.
           </p>
         </div>
 

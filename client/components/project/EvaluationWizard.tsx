@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import toast from 'react-hot-toast';
-import { apiClient } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import { ChevronLeft, ChevronRight, Play, CheckCircle } from 'lucide-react';
-import type { QuestionSlot, Prompt } from '@/types';
+import type { QuestionSlot, Prompt, RunEvaluationRequest } from '@/types';
 
 interface EvaluationWizardProps {
   isOpen: boolean;
@@ -46,18 +46,22 @@ export default function EvaluationWizard({
     retry: false,
   });
 
+  useEffect(() => {
+    if (isOpen && prompt?.id) {
+      setSelectedPromptId(prompt.id);
+    }
+  }, [isOpen, prompt?.id]);
+
   const selectedSlot = slots?.find(s => s.id === selectedSlotId);
 
   const runEvaluationMutation = useMutation({
     mutationFn: () => {
-      const payload: any = {
+      const payload: RunEvaluationRequest = {
         slot_id: selectedSlotId,
-        prompt_id: selectedPromptId || undefined,
+        prompt_id: selectedPromptId,
         include_trait_tests: includeTraitTests,
+        trait_test_count: traitTestCount,
       };
-      if (includeTraitTests) {
-        payload.trait_test_count = traitTestCount;
-      }
       return apiClient.runEvaluation(projectId, payload);
     },
     onSuccess: () => {
@@ -70,10 +74,9 @@ export default function EvaluationWizard({
         router.push(`/project/${projectId}?tab=history`);
       }, 1000);
     },
-    onError: (error: any) => {
+    onError: (error) => {
       setIsRunning(false);
-      console.error('Error running evaluation:', error);
-      toast.error(error.response?.data?.detail || 'Failed to run evaluation');
+      toast.error(getApiErrorMessage(error, 'Failed to run evaluation'));
     },
   });
 
@@ -106,7 +109,7 @@ export default function EvaluationWizard({
   };
 
   const canProceedStep1 = selectedSlotId !== '';
-  const canProceedStep2 = true; // All fields in step 2 are optional
+  const canProceedStep2 = Boolean(prompt && selectedPromptId);
 
   return (
     <Modal
@@ -222,7 +225,7 @@ export default function EvaluationWizard({
               {/* Prompt Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Prompt (Optional)
+                  Agent Prompt Context
                 </label>
                 {promptLoading ? (
                   <div className="text-sm text-gray-500">Loading prompt...</div>
@@ -238,32 +241,19 @@ export default function EvaluationWizard({
                         className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
                       />
                       <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Use Current Prompt</div>
+                        <div className="font-medium text-gray-900">Use Current Agent Prompt</div>
                         <div className="text-xs text-gray-600 mt-1 line-clamp-2">
                           {prompt.content.substring(0, 100)}...
                         </div>
-                      </div>
-                    </label>
-                    <label className="flex items-start p-3 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-gray-300">
-                      <input
-                        type="radio"
-                        name="prompt"
-                        value=""
-                        checked={selectedPromptId === ''}
-                        onChange={() => setSelectedPromptId('')}
-                        className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
-                      />
-                      <div className="ml-3">
-                        <div className="font-medium text-gray-900">No Prompt</div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          Run evaluation without a system prompt
+                        <div className="text-xs text-gray-500 mt-1">
+                          Required evaluator context for prompt-adherence scoring.
                         </div>
                       </div>
                     </label>
                   </div>
                 ) : (
                   <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
-                    No prompt uploaded. Evaluation will run without a system prompt.
+                    Upload an agent prompt before running an evaluation.
                   </div>
                 )}
               </div>
@@ -333,7 +323,7 @@ export default function EvaluationWizard({
                 <div className="border-t pt-4">
                   <div className="text-xs font-medium text-gray-500 uppercase">Prompt</div>
                   <div className="mt-1 text-sm text-gray-900">
-                    {selectedPromptId ? 'Using current prompt' : 'No prompt (default behavior)'}
+                    Using current agent prompt as evaluator context
                   </div>
                 </div>
 

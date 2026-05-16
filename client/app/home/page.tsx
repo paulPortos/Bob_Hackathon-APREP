@@ -9,7 +9,7 @@ import ProjectCard from '@/components/project/ProjectCard';
 import CreateProjectModal from '@/components/project/CreateProjectModal';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import Spinner from '@/components/ui/Spinner';
-import { apiClient } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import { Project, CreateProjectRequest } from '@/types';
 import { FolderOpen } from 'lucide-react';
 
@@ -32,8 +32,8 @@ export default function HomePage() {
       toast.success('Project created successfully!');
       setIsCreateModalOpen(false);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to create project');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Failed to create project'));
     },
   });
 
@@ -45,8 +45,8 @@ export default function HomePage() {
       toast.success('Project deleted successfully!');
       setProjectToDelete(null);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to delete project');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete project'));
     },
   });
 

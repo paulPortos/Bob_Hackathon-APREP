@@ -103,6 +103,11 @@ export interface GenerateQuestionsRequest {
   use_prompt: boolean;
 }
 
+export interface GenerateQuestionsResponse {
+  slot_id: string;
+  questions: Question[];
+}
+
 export interface UpdateQuestionSlotRequest {
   name?: string;
   description?: string;
@@ -155,7 +160,7 @@ export interface EvaluationDetails extends Evaluation {
 
 export interface RunEvaluationRequest {
   slot_id: string;
-  prompt_id?: string;
+  prompt_id: string;
   include_trait_tests: boolean;
   trait_test_count: number;
 }

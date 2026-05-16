@@ -8,7 +8,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import toast from 'react-hot-toast';
-import { apiClient } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import { Plus, Trash2 } from 'lucide-react';
 import type { QuestionSlot } from '@/types';
 
@@ -86,9 +86,8 @@ export default function QuestionSlotModal({
       onSuccess();
       onClose();
       reset();
-    } catch (error: any) {
-      console.error('Error saving question slot:', error);
-      toast.error(error.response?.data?.detail || 'Failed to save question slot');
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, 'Failed to save question slot'));
     } finally {
       setIsSubmitting(false);
     }

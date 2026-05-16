@@ -80,24 +80,18 @@ async def run_evaluation(
             detail="Question slot not found"
         )
     
-    # Get prompt
-    prompt = None
-    if request.prompt_id:
-        prompt = db.query(Prompt).filter(
-            Prompt.id == request.prompt_id,
-            Prompt.project_id == project_id
-        ).first()
-        
-        if not prompt:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Prompt not found"
-            )
-    else:
-        # Get latest prompt
-        prompt = db.query(Prompt).filter(
-            Prompt.project_id == project_id
-        ).order_by(Prompt.created_at.desc()).first()
+    # The prompt is the target agent's instruction context for evaluator scoring.
+    # It is not sent to the target agent endpoint as part of the question payload.
+    prompt = db.query(Prompt).filter(
+        Prompt.id == request.prompt_id,
+        Prompt.project_id == project_id
+    ).first()
+    
+    if not prompt or not prompt.content.strip():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Prompt is required before running an evaluation"
+        )
     
     # Run evaluation
     try:

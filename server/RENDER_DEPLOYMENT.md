@@ -175,11 +175,22 @@ CORS_ORIGINS=https://your-frontend.vercel.app,https://your-custom-domain.com
 ⚠️ **For development only, you can use `*` but NEVER in production!**
 
 ```bash
-# Ollama Configuration (Cloud by default)
+# Ollama Configuration (Cloud - Recommended)
 OLLAMA_BASE_URL=
 OLLAMA_API_KEY=<your-ollama-cloud-api-key>
 OLLAMA_DEFAULT_MODEL=llama3.1
 ```
+👆 **Leave OLLAMA_BASE_URL empty to use Ollama Cloud automatically**
+
+**Get Ollama Cloud API Key:**
+1. Visit [https://ollama.com/](https://ollama.com/)
+2. Sign up or log in
+3. Generate an API key from your dashboard
+4. Paste it in OLLAMA_API_KEY
+
+**How it works:**
+- Empty `OLLAMA_BASE_URL` → Uses Ollama Cloud (https://api.ollama.com)
+- Set `OLLAMA_BASE_URL` → Uses your custom Ollama instance
 
 ```bash
 # Application Settings (optional, uses defaults if not set)

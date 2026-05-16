@@ -16,7 +16,7 @@ import GenerateQuestionsModal from '@/components/project/GenerateQuestionsModal'
 import EvaluationWizard from '@/components/project/EvaluationWizard';
 import EvaluationDetailsModal from '@/components/project/EvaluationDetailsModal';
 import EditProjectModal from '@/components/project/EditProjectModal';
-import { apiClient } from '@/lib/api';
+import { apiClient, getApiErrorMessage } from '@/lib/api';
 import { ChevronRight, Upload, Edit, Trash2, Plus, Sparkles, FolderOpen, History as HistoryIcon, Settings, Play } from 'lucide-react';
 import Link from 'next/link';
 import { QuestionSlot } from '@/types';
@@ -124,8 +124,8 @@ function PromptsTab({ projectId }: { projectId: string }) {
       toast.success('Prompt deleted successfully!');
       setIsDeleteDialogOpen(false);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to delete prompt');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete prompt'));
     },
   });
 
@@ -229,8 +229,8 @@ function QuestionSlotsTab({ projectId }: { projectId: string }) {
       toast.success('Question slot deleted successfully!');
       setSlotToDelete(null);
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to delete question slot');
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Failed to delete question slot'));
     },
   });
 
