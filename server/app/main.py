@@ -4,6 +4,8 @@ from app.database import init_db
 from app.routers import auth, projects, prompts, question_slots, evaluations, ollama
 from app.schemas import HealthResponse
 from app.services.ollama_client import ollama_client
+from app.services.keep_alive import keep_alive_service
+from datetime import datetime
 
 # Create FastAPI app
 app = FastAPI(
@@ -34,6 +36,15 @@ async def startup_event():
         print("✓ Ollama is available")
     else:
         print("⚠ Ollama is not available - evaluations will use heuristic scoring")
+    
+    # Start keep-alive service
+    keep_alive_service.start()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown."""
+    keep_alive_service.stop()
 
 
 # Include routers
@@ -55,9 +66,21 @@ async def root():
     }
 
 
+@app.get("/ping", tags=["Health"])
+async def ping():
+    """
+    Lightweight ping endpoint for keep-alive.
+    Returns minimal response with no database queries.
+    """
+    return {
+        "status": "alive",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint with full system status."""
     # Check database
     try:
         from app.database import engine

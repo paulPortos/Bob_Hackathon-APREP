@@ -1,18 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
+import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
-import { Prompt, CreatePromptRequest } from '@/types';
+import type { Prompt } from '@/types';
+
+const promptSchema = z.object({
+  content: z.string().min(10, 'Prompt must be at least 10 characters'),
+  file_type: z.enum(['txt', 'md']),
+});
+
+type PromptFormData = z.infer<typeof promptSchema>;
 
 interface PromptModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
   existingPrompt?: Prompt | null;
+  onSuccess: () => void;
 }
 
 export default function PromptModal({
@@ -20,50 +30,50 @@ export default function PromptModal({
   onClose,
   projectId,
   existingPrompt,
+  onSuccess,
 }: PromptModalProps) {
-  const [content, setContent] = useState('');
-  const [fileType, setFileType] = useState<'txt' | 'md'>('txt');
-  const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (existingPrompt) {
-      setContent(existingPrompt.content);
-      setFileType(existingPrompt.file_type as 'txt' | 'md');
-    } else {
-      setContent('');
-      setFileType('txt');
-    }
-  }, [existingPrompt, isOpen]);
-
-  const mutation = useMutation({
-    mutationFn: (data: CreatePromptRequest) =>
-      apiClient.createOrUpdatePrompt(projectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['prompt', projectId] });
-      toast.success(existingPrompt ? 'Prompt updated successfully!' : 'Prompt created successfully!');
-      onClose();
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to save prompt');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<PromptFormData>({
+    resolver: zodResolver(promptSchema),
+    defaultValues: {
+      content: existingPrompt?.content || '',
+      file_type: existingPrompt?.file_type || 'txt',
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim()) {
-      toast.error('Prompt content cannot be empty');
-      return;
+  const onSubmit = async (data: PromptFormData) => {
+    setIsSubmitting(true);
+    try {
+      await apiClient.createOrUpdatePrompt(projectId, data);
+      toast.success(existingPrompt ? 'Prompt updated successfully' : 'Prompt created successfully');
+      onSuccess();
+      onClose();
+      reset();
+    } catch (error: any) {
+      console.error('Error saving prompt:', error);
+      toast.error(error.response?.data?.detail || 'Failed to save prompt');
+    } finally {
+      setIsSubmitting(false);
     }
-    mutation.mutate({ content, file_type: fileType });
+  };
+
+  const handleClose = () => {
+    if (!isSubmitting) {
+      reset();
+      onClose();
+    }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={existingPrompt ? 'Edit Prompt' : 'Upload Prompt'}
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal isOpen={isOpen} onClose={handleClose} title={existingPrompt ? 'Edit Prompt' : 'Upload Prompt'}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* File Type Selector */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             File Type
@@ -73,53 +83,57 @@ export default function PromptModal({
               <input
                 type="radio"
                 value="txt"
-                checked={fileType === 'txt'}
-                onChange={(e) => setFileType(e.target.value as 'txt' | 'md')}
+                {...register('file_type')}
                 className="mr-2"
               />
-              Text (.txt)
+              <span className="text-sm">Text (.txt)</span>
             </label>
             <label className="flex items-center">
               <input
                 type="radio"
                 value="md"
-                checked={fileType === 'md'}
-                onChange={(e) => setFileType(e.target.value as 'txt' | 'md')}
+                {...register('file_type')}
                 className="mr-2"
               />
-              Markdown (.md)
+              <span className="text-sm">Markdown (.md)</span>
             </label>
           </div>
         </div>
 
+        {/* Prompt Content */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
             Prompt Content
           </label>
           <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
+            id="content"
+            {...register('content')}
             rows={12}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
-            placeholder="Enter your prompt content here..."
-            required
+            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm ${
+              errors.content ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="Enter your system prompt here...&#10;&#10;Example:&#10;You are a helpful AI assistant. Your role is to..."
           />
-          <p className="mt-1 text-sm text-gray-500">
-            {content.length} characters
+          {errors.content && (
+            <p className="mt-1 text-sm text-red-600">{errors.content.message}</p>
+          )}
+          <p className="mt-1 text-xs text-gray-500">
+            This prompt will be used as the system message for your AI agent during evaluations.
           </p>
         </div>
 
+        {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-4">
           <Button
             type="button"
             variant="secondary"
-            onClick={onClose}
-            disabled={mutation.isPending}
+            onClick={handleClose}
+            disabled={isSubmitting}
           >
             Cancel
           </Button>
-          <Button type="submit" isLoading={mutation.isPending}>
-            {existingPrompt ? 'Update' : 'Save'} Prompt
+          <Button type="submit" isLoading={isSubmitting}>
+            {existingPrompt ? 'Update Prompt' : 'Save Prompt'}
           </Button>
         </div>
       </form>

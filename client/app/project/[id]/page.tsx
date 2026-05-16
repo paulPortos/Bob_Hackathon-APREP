@@ -17,7 +17,7 @@ import EvaluationWizard from '@/components/project/EvaluationWizard';
 import EvaluationDetailsModal from '@/components/project/EvaluationDetailsModal';
 import EditProjectModal from '@/components/project/EditProjectModal';
 import { apiClient } from '@/lib/api';
-import { ChevronRight, Upload, Edit, Trash2, Plus, Sparkles, FolderOpen, History as HistoryIcon, Settings } from 'lucide-react';
+import { ChevronRight, Upload, Edit, Trash2, Plus, Sparkles, FolderOpen, History as HistoryIcon, Settings, Play } from 'lucide-react';
 import Link from 'next/link';
 import { QuestionSlot } from '@/types';
 
@@ -182,6 +182,9 @@ function PromptsTab({ projectId }: { projectId: string }) {
         onClose={() => setIsModalOpen(false)}
         projectId={projectId}
         existingPrompt={prompt}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['prompt', projectId] });
+        }}
       />
 
       <ConfirmDialog
@@ -329,12 +332,18 @@ function QuestionSlotsTab({ projectId }: { projectId: string }) {
         }}
         projectId={projectId}
         existingSlot={slotToEdit}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['question-slots', projectId] });
+        }}
       />
 
       <GenerateQuestionsModal
         isOpen={isGenerateModalOpen}
         onClose={() => setIsGenerateModalOpen(false)}
         projectId={projectId}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['question-slots', projectId] });
+        }}
       />
 
       <ConfirmDialog
@@ -352,16 +361,35 @@ function QuestionSlotsTab({ projectId }: { projectId: string }) {
 }
 
 function EvaluationTab({ projectId }: { projectId: string }) {
-  const router = useRouter();
-  
-  const handleComplete = () => {
-    // Switch to history tab after evaluation completes
-    router.push(`/project/${projectId}?tab=history`);
-  };
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   return (
-    <div className="py-6">
-      <EvaluationWizard projectId={projectId} onComplete={handleComplete} />
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+        <div className="max-w-md mx-auto">
+          <div className="bg-primary-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+            <Play className="h-10 w-10 text-primary-600" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Run Evaluation</h3>
+          <p className="text-gray-600 mb-6">
+            Test your AI agent against your question slots and evaluate its performance across multiple traits.
+          </p>
+          <Button size="lg" onClick={() => setIsWizardOpen(true)}>
+            <Play className="h-5 w-5 mr-2" />
+            Start Evaluation Wizard
+          </Button>
+        </div>
+      </div>
+
+      <EvaluationWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        projectId={projectId}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['evaluations', projectId] });
+        }}
+      />
     </div>
   );
 }

@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     max_trait_tests: int = 10
     default_timeout_seconds: int = 30
     
+    # Keep-Alive Settings (for Render deployment)
+    base_url: Optional[str] = None  # Base URL of the deployed app (e.g., https://your-app.onrender.com)
+    keep_alive_enabled: bool = False  # Enable/disable keep-alive pings
+    keep_alive_interval_minutes: int = 14  # Interval between pings (default: 14 minutes)
+    
     class Config:
         env_file = ".env"
         case_sensitive = False

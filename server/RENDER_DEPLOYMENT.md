@@ -165,6 +165,13 @@ JWT_ALGORITHM=HS256
 JWT_EXPIRATION_DAYS=7
 ```
 
+```bash
+# Keep-Alive Settings (IMPORTANT for Free Tier!)
+BASE_URL=https://your-app-name.onrender.com
+KEEP_ALIVE_ENABLED=true
+KEEP_ALIVE_INTERVAL_MINUTES=14
+```
+
 ### Step 2: Generate Security Keys
 
 **Generate Encryption Key:**
@@ -426,7 +433,37 @@ git push
 **Solution**:
 - Free tier spins down after 15 minutes of inactivity
 - First request after spin-down takes 30-60 seconds
-- Upgrade to Starter ($7/month) for always-on service
+- **Use Keep-Alive System** (see below) to prevent spin-down
+- Or upgrade to Starter ($7/month) for always-on service
+
+### Keep-Alive System (Free Tier Solution)
+
+**Problem**: Free tier spins down, causing cold starts
+
+**Solution**: Enable the built-in keep-alive system!
+
+**Setup:**
+1. Add environment variables in Render:
+   ```bash
+   BASE_URL=https://your-app-name.onrender.com
+   KEEP_ALIVE_ENABLED=true
+   KEEP_ALIVE_INTERVAL_MINUTES=14
+   ```
+
+2. Deploy your application
+
+3. Verify in logs:
+   ```
+   ✓ Keep-alive scheduler started - pinging https://your-app-name.onrender.com/ping every 14 minutes
+   ```
+
+**How it works:**
+- Application pings itself every 14 minutes
+- Prevents Render from spinning down (15-minute timeout)
+- Uses lightweight `/ping` endpoint (no database queries)
+- Minimal resource consumption
+
+**For detailed instructions**, see [`KEEP_ALIVE_GUIDE.md`](./KEEP_ALIVE_GUIDE.md)
 
 ---
 
@@ -658,6 +695,7 @@ Dashboard: https://dashboard.render.com
 Your API: https://your-app-name.onrender.com
 API Docs: https://your-app-name.onrender.com/docs
 Health Check: https://your-app-name.onrender.com/health
+Ping (Keep-Alive): https://your-app-name.onrender.com/ping
 ```
 
 ### Common Commands
@@ -675,6 +713,11 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 **Test Health Endpoint:**
 ```bash
 curl https://your-app-name.onrender.com/health
+```
+
+**Test Ping Endpoint:**
+```bash
+curl https://your-app-name.onrender.com/ping
 ```
 
 **Manual Deploy:**
@@ -710,11 +753,13 @@ git push origin main
 
 ### Post-Deployment
 - [ ] Health check passes
+- [ ] Ping endpoint works (`/ping`)
 - [ ] API docs accessible
 - [ ] User registration works
 - [ ] Authentication works
 - [ ] Database queries successful
 - [ ] Ollama connection verified
+- [ ] Keep-alive system enabled (if using free tier)
 - [ ] Logs reviewed for errors
 
 ### Production Readiness

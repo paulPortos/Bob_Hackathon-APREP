@@ -1,26 +1,37 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+import { useState } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api';
-import { QuestionSlot, CreateQuestionSlotRequest, UpdateQuestionSlotRequest } from '@/types';
 import { Plus, Trash2 } from 'lucide-react';
+import type { QuestionSlot } from '@/types';
+
+const questionSchema = z.object({
+  question_text: z.string().min(5, 'Question must be at least 5 characters'),
+  expected_answer: z.string().optional(),
+  order: z.number(),
+});
+
+const slotSchema = z.object({
+  name: z.string().min(3, 'Name must be at least 3 characters'),
+  description: z.string().optional(),
+  questions: z.array(questionSchema).min(1, 'At least one question is required').max(10, 'Maximum 10 questions allowed'),
+});
+
+type SlotFormData = z.infer<typeof slotSchema>;
 
 interface QuestionSlotModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
   existingSlot?: QuestionSlot | null;
-}
-
-interface QuestionInput {
-  question_text: string;
-  expected_answer: string;
-  order: number;
+  onSuccess: () => void;
 }
 
 export default function QuestionSlotModal({
@@ -28,175 +39,132 @@ export default function QuestionSlotModal({
   onClose,
   projectId,
   existingSlot,
+  onSuccess,
 }: QuestionSlotModalProps) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [questions, setQuestions] = useState<QuestionInput[]>([
-    { question_text: '', expected_answer: '', order: 1 },
-  ]);
-  const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (existingSlot) {
-      setName(existingSlot.name);
-      setDescription(existingSlot.description || '');
-      setQuestions(
-        existingSlot.questions.map((q) => ({
-          question_text: q.question_text,
-          expected_answer: q.expected_answer || '',
-          order: q.order,
-        }))
-      );
-    } else {
-      setName('');
-      setDescription('');
-      setQuestions([{ question_text: '', expected_answer: '', order: 1 }]);
-    }
-  }, [existingSlot, isOpen]);
-
-  const createMutation = useMutation({
-    mutationFn: (data: CreateQuestionSlotRequest) =>
-      apiClient.createQuestionSlot(projectId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['question-slots', projectId] });
-      toast.success('Question slot created successfully!');
-      onClose();
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to create question slot');
-    },
+  const {
+    register,
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<SlotFormData>({
+    resolver: zodResolver(slotSchema),
+    defaultValues: existingSlot
+      ? {
+          name: existingSlot.name,
+          description: existingSlot.description || '',
+          questions: existingSlot.questions.map((q, idx) => ({
+            question_text: q.question_text,
+            expected_answer: q.expected_answer || '',
+            order: idx + 1,
+          })),
+        }
+      : {
+          name: '',
+          description: '',
+          questions: [{ question_text: '', expected_answer: '', order: 1 }],
+        },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: (data: UpdateQuestionSlotRequest) =>
-      apiClient.updateQuestionSlot(existingSlot!.id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['question-slots', projectId] });
-      toast.success('Question slot updated successfully!');
-      onClose();
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.detail || 'Failed to update question slot');
-    },
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'questions',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!name.trim()) {
-      toast.error('Slot name is required');
-      return;
+  const onSubmit = async (data: SlotFormData) => {
+    setIsSubmitting(true);
+    try {
+      if (existingSlot) {
+        await apiClient.updateQuestionSlot(existingSlot.id, data);
+        toast.success('Question slot updated successfully');
+      } else {
+        await apiClient.createQuestionSlot(projectId, data);
+        toast.success('Question slot created successfully');
+      }
+      onSuccess();
+      onClose();
+      reset();
+    } catch (error: any) {
+      console.error('Error saving question slot:', error);
+      toast.error(error.response?.data?.detail || 'Failed to save question slot');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    const validQuestions = questions.filter(q => q.question_text.trim());
-    if (validQuestions.length === 0) {
-      toast.error('At least one question is required');
-      return;
-    }
-
-    const data = {
-      name,
-      description: description || undefined,
-      questions: validQuestions,
-    };
-
-    if (existingSlot) {
-      updateMutation.mutate(data);
-    } else {
-      createMutation.mutate(data);
+  const handleClose = () => {
+    if (!isSubmitting) {
+      reset();
+      onClose();
     }
   };
 
   const addQuestion = () => {
-    if (questions.length >= 10) {
-      toast.error('Maximum 10 questions allowed');
-      return;
+    if (fields.length < 10) {
+      append({ question_text: '', expected_answer: '', order: fields.length + 1 });
     }
-    setQuestions([
-      ...questions,
-      { question_text: '', expected_answer: '', order: questions.length + 1 },
-    ]);
   };
-
-  const removeQuestion = (index: number) => {
-    if (questions.length === 1) {
-      toast.error('At least one question is required');
-      return;
-    }
-    const newQuestions = questions.filter((_, i) => i !== index);
-    // Reorder
-    newQuestions.forEach((q, i) => {
-      q.order = i + 1;
-    });
-    setQuestions(newQuestions);
-  };
-
-  const updateQuestion = (index: number, field: keyof QuestionInput, value: string) => {
-    const newQuestions = [...questions];
-    newQuestions[index] = { ...newQuestions[index], [field]: value };
-    setQuestions(newQuestions);
-  };
-
-  const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={existingSlot ? 'Edit Question Slot' : 'Create Question Slot'}
+      size="lg"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <Input
-            label="Slot Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., Basic Tests"
-            required
-          />
-        </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Slot Name */}
+        <Input
+          label="Slot Name"
+          {...register('name')}
+          error={errors.name?.message}
+          placeholder="e.g., Basic Tests, Security Tests"
+          required
+        />
 
+        {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
             Description (Optional)
           </label>
           <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            id="description"
+            {...register('description')}
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-sm"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
             placeholder="Brief description of this question slot"
           />
         </div>
 
+        {/* Questions */}
         <div>
           <div className="flex justify-between items-center mb-3">
             <label className="block text-sm font-medium text-gray-700">
-              Questions
+              Questions ({fields.length}/10)
             </label>
             <Button
               type="button"
               variant="secondary"
               size="sm"
               onClick={addQuestion}
-              disabled={questions.length >= 10}
+              disabled={fields.length >= 10}
             >
               <Plus className="h-4 w-4 mr-1" />
               Add Question
             </Button>
           </div>
 
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {questions.map((question, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+            {fields.map((field, index) => (
+              <div key={field.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                 <div className="flex justify-between items-start mb-3">
-                  <span className="text-sm font-medium text-gray-700">
-                    Question {index + 1}
-                  </span>
-                  {questions.length > 1 && (
+                  <span className="text-sm font-medium text-gray-700">Question {index + 1}</span>
+                  {fields.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeQuestion(index)}
+                      onClick={() => remove(index)}
                       className="text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -205,36 +173,66 @@ export default function QuestionSlotModal({
                 </div>
 
                 <div className="space-y-3">
-                  <Input
-                    label="Question Text"
-                    value={question.question_text}
-                    onChange={(e) => updateQuestion(index, 'question_text', e.target.value)}
-                    placeholder="Enter your question"
-                    required
-                  />
-                  <Input
-                    label="Expected Answer (Optional)"
-                    value={question.expected_answer}
-                    onChange={(e) => updateQuestion(index, 'expected_answer', e.target.value)}
-                    placeholder="Expected answer for reference"
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Question Text *
+                    </label>
+                    <textarea
+                      {...register(`questions.${index}.question_text`)}
+                      rows={2}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        errors.questions?.[index]?.question_text
+                          ? 'border-red-500'
+                          : 'border-gray-300'
+                      }`}
+                      placeholder="Enter your question here"
+                    />
+                    {errors.questions?.[index]?.question_text && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.questions[index]?.question_text?.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Expected Answer (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      {...register(`questions.${index}.expected_answer`)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="Expected answer for comparison"
+                    />
+                  </div>
+
+                  <input
+                    type="hidden"
+                    {...register(`questions.${index}.order`)}
+                    value={index + 1}
                   />
                 </div>
               </div>
             ))}
           </div>
+
+          {errors.questions && typeof errors.questions.message === 'string' && (
+            <p className="mt-2 text-sm text-red-600">{errors.questions.message}</p>
+          )}
         </div>
 
+        {/* Action Buttons */}
         <div className="flex justify-end gap-3 pt-4 border-t">
           <Button
             type="button"
             variant="secondary"
-            onClick={onClose}
-            disabled={isPending}
+            onClick={handleClose}
+            disabled={isSubmitting}
           >
             Cancel
           </Button>
-          <Button type="submit" isLoading={isPending}>
-            {existingSlot ? 'Update' : 'Create'} Slot
+          <Button type="submit" isLoading={isSubmitting}>
+            {existingSlot ? 'Update Slot' : 'Create Slot'}
           </Button>
         </div>
       </form>
