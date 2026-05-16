@@ -1,8 +1,43 @@
 # APREP Setup Guide
 
+## Prerequisites
+
+- Python 3.8+
+- PostgreSQL 12+ (recommended) or SQLite for development
+- Ollama (optional, for AI-powered scoring)
+
 ## Quick Start for Development
 
-### 1. Create Virtual Environment
+### 1. Set Up PostgreSQL Database
+
+**Option A: PostgreSQL (Recommended for Production)**
+
+Install PostgreSQL and create a database:
+
+```bash
+# Install PostgreSQL (macOS)
+brew install postgresql@14
+brew services start postgresql@14
+
+# Or on Ubuntu/Debian
+sudo apt-get install postgresql postgresql-contrib
+
+# Create database and user
+sudo -u postgres psql
+CREATE DATABASE aprep_db;
+CREATE USER aprep_user WITH PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE aprep_db TO aprep_user;
+\q
+```
+
+**Option B: SQLite (Development Only)**
+
+For quick testing, you can use SQLite by changing the DATABASE_URL in `.env`:
+```
+DATABASE_URL=sqlite:///./aprep.db
+```
+
+### 2. Create Virtual Environment
 
 ```bash
 # Create virtual environment
@@ -14,13 +49,26 @@ source venv/bin/activate  # On macOS/Linux
 venv\Scripts\activate  # On Windows
 ```
 
-### 2. Install Dependencies
+### 3. Install Dependencies
 
 ```bash
 pip install -r server/requirements.txt
 ```
 
-### 3. Generate Security Keys
+### 4. Configure Environment Variables
+
+Copy the example environment file and update it:
+
+```bash
+cp server/.env.example server/.env
+```
+
+Edit `server/.env` and update:
+- `DATABASE_URL`: Your PostgreSQL connection string
+- `ENCRYPTION_KEY`: Generate using the command below
+- `JWT_SECRET_KEY`: Generate using the command below
+
+### 5. Generate Security Keys
 
 The `.env` file has been created with temporary keys. For production or secure development, generate new keys:
 
@@ -34,7 +82,16 @@ python -c "import secrets; print('JWT_SECRET_KEY=' + secrets.token_urlsafe(32))"
 
 Copy these values to your `.env` file.
 
-### 4. Run the Application
+### 6. Initialize Database
+
+The database tables will be created automatically when you first run the application. To manually initialize:
+
+```bash
+cd server
+python -c "from app.database import init_db; init_db()"
+```
+
+### 7. Run the Application
 
 ```bash
 cd server
@@ -43,7 +100,7 @@ uvicorn app.main:app --reload
 
 The API will be available at: http://localhost:8000
 
-### 5. Access Documentation
+### 8. Access Documentation
 
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
@@ -95,11 +152,37 @@ pip install -r requirements.txt
 
 ### Database Issues
 
-If you encounter database errors, delete and recreate:
+**PostgreSQL Connection Issues:**
+
+```bash
+# Check if PostgreSQL is running
+brew services list  # macOS
+sudo systemctl status postgresql  # Linux
+
+# Test connection
+psql -U aprep_user -d aprep_db -h localhost
+```
+
+**SQLite Issues (if using SQLite):**
 
 ```bash
 rm server/aprep.db
 # Restart the server - it will recreate tables automatically
+```
+
+**Migration Issues:**
+
+If you need to reset the database:
+
+```bash
+# PostgreSQL
+sudo -u postgres psql
+DROP DATABASE aprep_db;
+CREATE DATABASE aprep_db;
+GRANT ALL PRIVILEGES ON DATABASE aprep_db TO aprep_user;
+\q
+
+# Then restart the server to recreate tables
 ```
 
 ### Import Errors

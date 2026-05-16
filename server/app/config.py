@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     """Application configuration settings."""
     
     # Database
-    database_url: str = "sqlite:///./aprep.db"
+    database_url: str = "postgresql://aprep_user:your_password@localhost:5432/aprep_db"
     
     # Ollama Configuration
     ollama_base_url: str = "http://localhost:11434"
