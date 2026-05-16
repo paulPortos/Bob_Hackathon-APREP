@@ -150,6 +150,14 @@ JWT_SECRET_KEY=<generate-with-command-below>
 ```
 
 ```bash
+# CORS Configuration (IMPORTANT!)
+CORS_ORIGINS=https://your-frontend.vercel.app,https://your-custom-domain.com
+```
+👆 **Replace with your actual frontend URL(s). Use comma-separated list for multiple origins.**
+
+⚠️ **For development only, you can use `*` but NEVER in production!**
+
+```bash
 # Ollama Configuration (Cloud by default)
 OLLAMA_BASE_URL=
 OLLAMA_API_KEY=<your-ollama-cloud-api-key>
@@ -334,6 +342,31 @@ curl -X POST https://your-app-name.onrender.com/auth/login \
 **Solution**:
 - Check that Root Directory is set to `server`
 - Verify `requirements.txt` is in the `server/` directory
+
+---
+
+**Problem**: Build fails with Rust/pydantic-core compilation errors
+
+```
+error: failed to create directory `/usr/local/cargo/registry/cache/...`
+Caused by: Read-only file system (os error 30)
+💥 maturin failed
+```
+
+**Solution**: This happens when Render uses Python 3.14 (very new) and pydantic doesn't have pre-built wheels.
+
+**Fix**: Create a `runtime.txt` file in the `server/` directory:
+```
+python-3.11.9
+```
+
+This forces Render to use Python 3.11, which has stable pre-built wheels for all dependencies.
+
+**Alternative**: Update to latest pydantic versions that support Python 3.14:
+```bash
+pip install --upgrade pydantic pydantic-settings
+pip freeze > requirements.txt
+```
 
 ---
 
@@ -648,23 +681,67 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 ### CORS Configuration
 
-**For Production:**
+CORS (Cross-Origin Resource Sharing) is critical for allowing your frontend to communicate with the backend API.
 
-Update `app/main.py`:
-```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://your-frontend.com",
-        "https://www.your-frontend.com"
-    ],  # Specify actual origins
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["*"],
-)
+**Configure via Environment Variable (Recommended):**
+
+In Render dashboard, set the `CORS_ORIGINS` environment variable:
+
+**For Production (Single Frontend):**
+```bash
+CORS_ORIGINS=https://your-frontend.vercel.app
 ```
 
-**Don't use `allow_origins=["*"]` in production!**
+**For Multiple Domains:**
+```bash
+CORS_ORIGINS=https://your-frontend.vercel.app,https://www.your-domain.com,https://your-domain.com
+```
+
+**For Development/Testing ONLY:**
+```bash
+CORS_ORIGINS=*
+```
+⚠️ **WARNING**: Never use `*` in production! It allows any website to access your API.
+
+**How it works:**
+- The application reads `CORS_ORIGINS` from environment variables
+- If set to `*`, allows all origins (development only)
+- If set to comma-separated URLs, allows only those specific origins
+- Configured in `app/config.py` and applied in `app/main.py`
+
+**Common CORS Issues:**
+
+**Problem**: Frontend gets CORS errors
+```
+Access to fetch at 'https://api.onrender.com' from origin 'https://frontend.vercel.app'
+has been blocked by CORS policy
+```
+
+**Solution**:
+1. Add your frontend URL to `CORS_ORIGINS` environment variable
+2. Include both `https://` and `http://` if needed (for local dev)
+3. Don't forget `www.` subdomain if you use it
+4. Redeploy after changing environment variables
+
+**Example Configuration:**
+```bash
+# Production setup
+CORS_ORIGINS=https://aprep-client.vercel.app,https://www.aprep.com
+
+# Development + Production
+CORS_ORIGINS=http://localhost:3000,https://aprep-client.vercel.app
+```
+
+**Testing CORS:**
+```bash
+# Test from browser console on your frontend
+fetch('https://your-api.onrender.com/health')
+  .then(r => r.json())
+  .then(console.log)
+  .catch(console.error)
+```
+
+If you see the response, CORS is configured correctly! ✅
 
 ### Rate Limiting
 
@@ -742,24 +819,26 @@ git push origin main
 - [ ] Environment variables documented
 - [ ] Database schema finalized
 - [ ] Security keys generated
+- [ ] Frontend URL(s) identified for CORS
 
 ### During Deployment
 - [ ] PostgreSQL database created
 - [ ] Internal Database URL copied
 - [ ] Web service configured
-- [ ] All environment variables set
+- [ ] All environment variables set (including CORS_ORIGINS)
 - [ ] Build successful
 - [ ] Application started
 
 ### Post-Deployment
-- [ ] Health check passes
+- [ ] Health check passes (`/health`)
 - [ ] Ping endpoint works (`/ping`)
-- [ ] API docs accessible
+- [ ] API docs accessible (`/docs`)
 - [ ] User registration works
 - [ ] Authentication works
 - [ ] Database queries successful
 - [ ] Ollama connection verified
 - [ ] Keep-alive system enabled (if using free tier)
+- [ ] CORS working (frontend can connect)
 - [ ] Logs reviewed for errors
 
 ### Production Readiness
@@ -767,9 +846,10 @@ git push origin main
 - [ ] Auto-deploy enabled
 - [ ] Backups configured
 - [ ] Monitoring set up
-- [ ] CORS configured properly
-- [ ] Rate limiting added
+- [ ] CORS configured with specific origins (not `*`)
+- [ ] Rate limiting added (optional)
 - [ ] Documentation updated
+- [ ] Frontend deployed and connected
 
 ---
 
