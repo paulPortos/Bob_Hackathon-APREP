@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     max_trait_tests: int = 10
     default_timeout_seconds: int = 30
     
+    # CORS Settings
+    cors_origins: str = "*"  # Comma-separated list of allowed origins, or "*" for all
+    
     # Keep-Alive Settings (for Render deployment)
     base_url: Optional[str] = None  # Base URL of the deployed app (e.g., https://your-app.onrender.com)
     keep_alive_enabled: bool = False  # Enable/disable keep-alive pings

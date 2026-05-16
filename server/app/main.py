@@ -5,6 +5,7 @@ from app.routers import auth, projects, prompts, question_slots, evaluations, ol
 from app.schemas import HealthResponse
 from app.services.ollama_client import ollama_client
 from app.services.keep_alive import keep_alive_service
+from app.config import settings
 from datetime import datetime
 
 # Create FastAPI app
@@ -15,9 +16,10 @@ app = FastAPI(
 )
 
 # Configure CORS
+cors_origins = settings.cors_origins.split(",") if settings.cors_origins != "*" else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
