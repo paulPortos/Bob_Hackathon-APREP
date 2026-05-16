@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # Ollama Configuration
     ollama_base_url: str = "http://localhost:11434"
     ollama_default_model: str = "llama2"
+    ollama_api_key: Optional[str] = None
     
     # Security
     encryption_key: str
