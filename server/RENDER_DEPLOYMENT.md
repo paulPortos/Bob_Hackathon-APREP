@@ -100,6 +100,17 @@ Root Directory: server
 Runtime: Python 3
 ```
 
+⚠️ **IMPORTANT**: After creating the service, you MUST set the Python version to avoid build errors!
+
+**Option 1: Environment Variable (Recommended)**
+In the Render dashboard, add this environment variable:
+```
+PYTHON_VERSION=3.11.9
+```
+
+**Option 2: Use .python-version file**
+The repository includes a `.python-version` file in the `server/` directory that specifies Python 3.11.
+
 ### Step 3: Build & Start Commands
 
 **Build Command:**
@@ -135,7 +146,13 @@ Auto-Deploy: Yes (recommended)
 
 In the Render Web Service dashboard, scroll to **"Environment Variables"** section and add:
 
-### Required Variables
+### Critical Variables (Add These First!)
+
+```bash
+# Python Version (CRITICAL - prevents build errors!)
+PYTHON_VERSION=3.11.9
+```
+👆 **This MUST be set to avoid Python 3.14 build errors with pydantic!**
 
 ```bash
 # Database (from PostgreSQL service)
