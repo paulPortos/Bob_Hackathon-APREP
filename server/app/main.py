@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from app.database import init_db
 from app.routers import auth, projects, prompts, question_slots, evaluations, ollama
 from app.schemas import HealthResponse
@@ -15,8 +16,19 @@ app = FastAPI(
     version="1.0.0"
 )
 
+def parse_cors_origins(cors_origins: str) -> list[str]:
+    """Parse comma-separated origins, trimming common env formatting mistakes."""
+    if cors_origins.strip() == "*":
+        return ["*"]
+    return [
+        origin.strip().rstrip("/")
+        for origin in cors_origins.split(",")
+        if origin.strip()
+    ]
+
+
 # Configure CORS
-cors_origins = settings.cors_origins.split(",") if settings.cors_origins != "*" else ["*"]
+cors_origins = parse_cors_origins(settings.cors_origins)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -87,7 +99,7 @@ async def health_check():
     try:
         from app.database import engine
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         db_status = "healthy"
     except Exception as e:
         db_status = f"unhealthy: {str(e)}"
