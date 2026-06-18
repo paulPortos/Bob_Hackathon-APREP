@@ -27,6 +27,12 @@ Important constraints:
 - The stored prompt is used by APREP's evaluator for scoring context. It is not injected into the target agent endpoint request.
 - Database tables are created automatically with SQLAlchemy metadata on startup. The project does not currently include Alembic migrations.
 - Heuristic scoring is used when Ollama is unavailable or cannot complete an evaluation.
+- Evaluator hallucination is reduced through constrained prompts, numeric parsing, and score clamping, but it is not fully prevented.
+- Evaluator responses are parsed from model-generated text; APREP does not yet require strict JSON output or schema-validated evaluator responses.
+- APREP does not yet run multi-pass evaluation, evaluator consensus, or self-consistency checks.
+- Honesty, security, and semantic accuracy scores depend on evaluator-model judgment rather than deterministic proof.
+- Semantic accuracy is not embedding-based yet; APREP does not currently use cosine similarity or vector comparison.
+- `score_explanation` is stored for inspection, but it is not independently verified.
 
 ## Tech Stack
 
