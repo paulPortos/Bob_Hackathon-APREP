@@ -68,6 +68,7 @@ Edit `server/.env` and update:
 - `DATABASE_URL`: Your PostgreSQL connection string
 - `ENCRYPTION_KEY`: Generate using the command below
 - `JWT_SECRET_KEY`: Generate using the command below
+- `IP_HASH_SALT`: A separate random secret for IP fingerprints in production
 
 ### 5. Generate Security Keys
 

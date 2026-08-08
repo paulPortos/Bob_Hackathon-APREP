@@ -8,6 +8,7 @@ from app.schemas.evaluations.evaluation import EvaluationDetailResponse, Evaluat
 from app.services.evaluations.evaluator import evaluator_service
 from app.services.evaluations.report import report_generator
 from app.services.projects.project import ProjectService
+from app.services.system.abuse_protection import abuse_protection_service
 
 
 class EvaluationService:
@@ -15,7 +16,9 @@ class EvaluationService:
         self.db = db
         self.projects = ProjectService(db)
 
-    async def run(self, project_id: str, user_id: str, data: EvaluationRequest) -> Evaluation:
+    async def run(
+        self, project_id: str, user_id: str, client_ip: str, data: EvaluationRequest
+    ) -> Evaluation:
         project = self.projects.get_owned(project_id, user_id)
         slot = (
             self.db.query(QuestionSlot)
@@ -31,6 +34,7 @@ class EvaluationService:
         )
         if not prompt or not prompt.content.strip():
             raise NotFoundError("Prompt is required before running an evaluation")
+        abuse_protection_service.claim_daily_evaluation(self.db, client_ip)
         try:
             return await evaluator_service.run_evaluation(
                 db=self.db,

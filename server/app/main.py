@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.exception_handlers import app_error_handler
+from app.api.middleware.ip_rate_limit import IPRateLimitMiddleware
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.database import init_db
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     cors_origins = parse_cors_origins(settings.cors_origins)
+    app.add_middleware(IPRateLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,

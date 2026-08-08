@@ -9,9 +9,9 @@ from app.services.evaluations.evaluation import EvaluationService
 
 class EvaluationController:
     async def run(
-        self, db: Session, user: User, project_id: str, data: EvaluationRequest
+        self, db: Session, user: User, project_id: str, client_ip: str, data: EvaluationRequest
     ) -> Evaluation:
-        return await EvaluationService(db).run(project_id, user.id, data)
+        return await EvaluationService(db).run(project_id, user.id, client_ip, data)
 
     def list(self, db: Session, user: User, project_id: str) -> list[Evaluation]:
         return EvaluationService(db).list_for_project(project_id, user.id)

@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Optional
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVER_DIRECTORY = Path(__file__).resolve().parents[3]
@@ -36,6 +37,13 @@ class ApplicationSettings(BaseSettings):
     base_url: Optional[str] = None
     keep_alive_enabled: bool = False
     keep_alive_interval_minutes: int = 14
+
+    rate_limit_requests_per_minute: int = Field(default=40, ge=1)
+    evaluations_per_ip_per_day: int = Field(default=1, ge=1)
+    trusted_proxy_count: int = Field(default=0, ge=0)
+    trusted_proxy_ips: str = ""
+    ip_hash_salt: Optional[str] = None
+    abuse_record_retention_days: int = Field(default=7, ge=1)
 
     model_config = SettingsConfigDict(
         case_sensitive=False,

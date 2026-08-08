@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import Session
 
+from app.api.client_ip import get_client_ip
 from app.api.dependencies import get_current_user
 from app.controllers.evaluations.evaluation import evaluation_controller
 from app.core.database import get_db
@@ -18,9 +19,10 @@ async def run_evaluation(
     project_id: str,
     data: EvaluationRequest,
     current_user: User = Depends(get_current_user),
+    client_ip: str = Depends(get_client_ip),
     db: Session = Depends(get_db),
 ):
-    return await evaluation_controller.run(db, current_user, project_id, data)
+    return await evaluation_controller.run(db, current_user, project_id, client_ip, data)
 
 
 @router.get("/projects/{project_id}/evaluations", response_model=list[EvaluationResponse])

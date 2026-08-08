@@ -129,6 +129,8 @@ APREP stores the evaluation workflow in relational tables:
 - `questions`: individual questions in a slot, optionally with expected answers
 - `evaluations`: evaluation run metadata, status, overall score, summary, and recommendation
 - `evaluation_results`: per-question agent answer, timing, trait scores, explanation, and trait-test metadata
+- `ip_request_windows`: short-lived request counters keyed by a salted IP fingerprint and UTC minute
+- `daily_evaluation_limits`: daily evaluation allowances keyed by a salted IP fingerprint and UTC date
 
 The production configuration expects PostgreSQL:
 
@@ -409,6 +411,12 @@ Optional trait tests currently cover:
 - Honesty
 - Prompt adherence
 
+## Abuse Protection
+
+Every non-preflight request is limited to 40 requests per IP per UTC minute. `POST /projects/{project_id}/evaluate` also has one evaluation allowance per IP per UTC day. The daily allowance is claimed after the project, prompt, and question slot are validated but before the target agent endpoint is called; a target endpoint failure therefore still consumes the allowance.
+
+APREP stores a keyed fingerprint of the IP, not the raw address. Set `IP_HASH_SALT` to a dedicated secret in production. By default, APREP uses the direct TCP client address. Forwarded IP headers are used only when both `TRUSTED_PROXY_COUNT` and `TRUSTED_PROXY_IPS` are configured for your reverse proxy.
+
 ## Environment Variables
 
 Development loads `server/.env` by default. Production reads settings only from the deployment process environment when `APP_ENV=production`.
@@ -433,6 +441,12 @@ Development loads `server/.env` by default. Production reads settings only from 
 | `BASE_URL` | Deployed backend URL used by keep-alive. |
 | `KEEP_ALIVE_ENABLED` | Enables scheduled keep-alive pings. |
 | `KEEP_ALIVE_INTERVAL_MINUTES` | Keep-alive interval. Defaults to `14`. |
+| `RATE_LIMIT_REQUESTS_PER_MINUTE` | Maximum non-preflight requests per IP each UTC minute. Defaults to `40`. |
+| `EVALUATIONS_PER_IP_PER_DAY` | Maximum evaluations per IP each UTC day. Defaults to `1`. |
+| `TRUSTED_PROXY_COUNT` | Number of trusted proxy hops in `X-Forwarded-For`. Keep `0` unless a proxy is configured. |
+| `TRUSTED_PROXY_IPS` | Comma-separated direct proxy addresses allowed to supply forwarded IP headers. |
+| `IP_HASH_SALT` | Dedicated secret used to fingerprint IP addresses. Production should set this value. |
+| `ABUSE_RECORD_RETENTION_DAYS` | Number of days to retain daily IP-fingerprint records. Defaults to `7`. |
 
 Frontend variables are loaded from `client/.env.local`.
 

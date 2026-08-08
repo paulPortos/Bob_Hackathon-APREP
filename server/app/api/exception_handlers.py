@@ -7,9 +7,11 @@ from app.core.exceptions import AppError, UnauthorizedError
 
 
 async def app_error_handler(_: Request, error: AppError) -> JSONResponse:
-    headers = {"WWW-Authenticate": "Bearer"} if isinstance(error, UnauthorizedError) else None
+    headers = getattr(error, "headers", {}).copy()
+    if isinstance(error, UnauthorizedError):
+        headers["WWW-Authenticate"] = "Bearer"
     return JSONResponse(
         status_code=error.status_code,
         content={"detail": error.detail},
-        headers=headers,
+        headers=headers or None,
     )
