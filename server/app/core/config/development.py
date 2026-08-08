@@ -9,7 +9,7 @@ class DevelopmentSettings(ApplicationSettings):
     app_env: str = "development"
     debug: bool = True
     log_level: str = "DEBUG"
-    database_url: str = "sqlite:///./aprep.db"
+    database_url: str = "postgresql+psycopg2://aprep_user:change-me@localhost:5432/aprep_db"
     cors_origins: str = "*"
 
     model_config = SettingsConfigDict(

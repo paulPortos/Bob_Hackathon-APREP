@@ -10,7 +10,7 @@ class ProductionSettings(ApplicationSettings):
     app_env: str = "production"
     debug: bool = False
     log_level: str = "INFO"
-    database_url: str = "postgresql://aprep_user:your_password@localhost:5432/aprep_db"
+    database_url: str = "postgresql+psycopg2://aprep_user:change-me@localhost:5432/aprep_db"
     cors_origins: str
 
     model_config = SettingsConfigDict(

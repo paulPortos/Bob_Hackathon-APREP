@@ -132,16 +132,10 @@ APREP stores the evaluation workflow in relational tables:
 - `ip_request_windows`: short-lived request counters keyed by a salted IP fingerprint and UTC minute
 - `daily_evaluation_limits`: daily evaluation allowances keyed by a salted IP fingerprint and UTC date
 
-The production configuration expects PostgreSQL:
+APREP uses PostgreSQL in every environment:
 
 ```env
-DATABASE_URL=postgresql://aprep_user:your_password@localhost:5432/aprep_db
-```
-
-Development defaults to SQLite and can be configured explicitly as:
-
-```env
-DATABASE_URL=sqlite:///./aprep.db
+DATABASE_URL=postgresql+psycopg2://aprep_user:change-me@localhost:5432/aprep_db
 ```
 
 When the backend starts, `app.core.database.init_db()` calls `Base.metadata.create_all(bind=engine)`. This creates missing tables but does not handle schema migrations for existing databases.
@@ -461,13 +455,6 @@ Database connection errors:
 ```bash
 # Confirm PostgreSQL is running and the configured database/user exist.
 psql -U aprep_user -d aprep_db -h localhost
-```
-
-Reset a SQLite development database:
-
-```bash
-rm server/aprep.db
-# Restart the backend; tables will be recreated.
 ```
 
 Check Ollama:

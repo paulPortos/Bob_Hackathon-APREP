@@ -17,11 +17,11 @@ The API is available at `http://localhost:8000`. Use `http://localhost:8000/docs
 
 ## Configuration
 
-For local development, keep these values in `server/.env`:
+Create an empty PostgreSQL database and application user first. Then keep its connection URL in `server/.env`:
 
 ```env
 APP_ENV=development
-DATABASE_URL=sqlite:///./aprep.db
+DATABASE_URL=postgresql+psycopg2://aprep_user:your-password@localhost:5432/aprep_db
 ENCRYPTION_KEY=your-fernet-key
 JWT_SECRET_KEY=your-random-secret
 CORS_ORIGINS=*
@@ -44,7 +44,7 @@ Confirm `server/.env` exists, has valid `ENCRYPTION_KEY` and `JWT_SECRET_KEY` va
 
 **Database connection error**
 
-For local development, set `DATABASE_URL=sqlite:///./aprep.db` and restart the server. For PostgreSQL, verify the connection string, database, and database user outside APREP first.
+Verify the PostgreSQL connection string, database, and database user outside APREP first. APREP creates its tables on startup after it can connect.
 
 **`ModuleNotFoundError` or dependency errors**
 
