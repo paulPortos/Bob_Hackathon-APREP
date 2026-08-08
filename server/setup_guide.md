@@ -1,208 +1,59 @@
-# APREP Setup Guide
+# APREP Server Setup
 
-## Prerequisites
+## Local setup
 
-- Python 3.8+
-- PostgreSQL 12+ (recommended) or SQLite for development
-- Ollama (optional, for AI-powered scoring)
-
-## Quick Start for Development
-
-### 1. Set Up PostgreSQL Database
-
-**Option A: PostgreSQL (Recommended for Production)**
-
-Install PostgreSQL and create a database:
+From the repository root:
 
 ```bash
-# Install PostgreSQL (macOS)
-brew install postgresql@14
-brew services start postgresql@14
-
-# Or on Ubuntu/Debian
-sudo apt-get install postgresql postgresql-contrib
-
-# Create database and user
-sudo -u postgres psql
-CREATE DATABASE aprep_db;
-CREATE USER aprep_user WITH PASSWORD 'your_secure_password';
-GRANT ALL PRIVILEGES ON DATABASE aprep_db TO aprep_user;
-\q
-```
-
-**Option B: SQLite (Development Only)**
-
-For quick testing, use the SQLite `DATABASE_URL` in `.env`:
-```
-DATABASE_URL=sqlite:///./aprep.db
-```
-
-### 2. Create Virtual Environment
-
-```bash
-# Create virtual environment
-python3 -m venv venv
-
-# Activate it
-source venv/bin/activate  # On macOS/Linux
-# OR
-venv\Scripts\activate  # On Windows
-```
-
-### 3. Install Dependencies
-
-```bash
+python3 -m venv server/venv
+source server/venv/bin/activate
 pip install -r server/requirements.txt
-```
-
-### 4. Configure Environment Variables
-
-Copy the example environment file and update it:
-
-```bash
 cp server/.env.example server/.env
-```
-
-Edit `server/.env` and update:
-
-- `DATABASE_URL`: Your PostgreSQL connection string
-- `ENCRYPTION_KEY`: Generate using the command below
-- `JWT_SECRET_KEY`: Generate using the command below
-- `IP_HASH_SALT`: A separate random secret for IP fingerprints in production
-
-### 5. Generate Security Keys
-
-Generate new keys for development and production:
-
-```bash
-# Generate encryption key
-python -c "from cryptography.fernet import Fernet; print('ENCRYPTION_KEY=' + Fernet.generate_key().decode())"
-
-# Generate JWT secret
-python -c "import secrets; print('JWT_SECRET_KEY=' + secrets.token_urlsafe(32))"
-```
-
-Copy these values to the active environment file.
-
-### 6. Initialize Database
-
-The database tables will be created automatically when you first run the application. To manually initialize:
-
-```bash
-cd server
-python -c "from app.core.database import init_db; init_db()"
-```
-
-### 7. Run the Application
-
-```bash
 cd server
 uvicorn app.main:app --reload
 ```
 
-The API will be available at: http://localhost:8000
+The API is available at `http://localhost:8000`. Use `http://localhost:8000/docs` to explore and test the API.
 
-### 8. Access Documentation
+## Configuration
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+For local development, keep these values in `server/.env`:
 
-## Testing the API
-
-### 1. Register a User
-
-```bash
-curl -X POST http://localhost:8000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test@example.com", "password": "testpass123"}'
+```env
+APP_ENV=development
+DATABASE_URL=sqlite:///./aprep.db
+ENCRYPTION_KEY=your-fernet-key
+JWT_SECRET_KEY=your-random-secret
+CORS_ORIGINS=*
 ```
 
-### 2. Login
+Generate the required secrets:
 
 ```bash
-curl -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test@example.com", "password": "testpass123"}'
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-Save the `access_token` from the response.
-
-### 3. Create a Test Project
-
-```bash
-curl -X POST http://localhost:8000/projects \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Test Agent",
-    "endpoint_url": "http://localhost:5000/chat",
-    "requires_token": false
-  }'
-```
+Ollama is optional. Without a reachable Ollama service or API key, APREP uses heuristic scoring. For production, set `APP_ENV=production` and provide all configuration through the deployment environment, including explicit `CORS_ORIGINS` and a dedicated `IP_HASH_SALT`.
 
 ## Troubleshooting
 
-### Virtual Environment Issues
+**Server fails during startup**
 
-If you see "externally-managed-environment" error, you must use a virtual environment:
+Confirm `server/.env` exists, has valid `ENCRYPTION_KEY` and `JWT_SECRET_KEY` values, and that the virtual environment is active.
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+**Database connection error**
 
-### Database Issues
+For local development, set `DATABASE_URL=sqlite:///./aprep.db` and restart the server. For PostgreSQL, verify the connection string, database, and database user outside APREP first.
 
-**PostgreSQL Connection Issues:**
+**`ModuleNotFoundError` or dependency errors**
 
-```bash
-# Check if PostgreSQL is running
-brew services list  # macOS
-sudo systemctl status postgresql  # Linux
+Activate `server/venv`, then reinstall with `pip install -r server/requirements.txt`.
 
-# Test connection
-psql -U aprep_user -d aprep_db -h localhost
-```
+**Ollama unavailable warning**
 
-**SQLite Issues (if using SQLite):**
+This does not stop the server. Check `OLLAMA_BASE_URL` for a local service or `OLLAMA_API_KEY` for Ollama Cloud if AI scoring or question generation is needed.
 
-```bash
-rm server/aprep.db
-# Restart the server - it will recreate tables automatically
-```
+**HTTP 429 response**
 
-**Migration Issues:**
-
-If you need to reset the database:
-
-```bash
-# PostgreSQL
-sudo -u postgres psql
-DROP DATABASE aprep_db;
-CREATE DATABASE aprep_db;
-GRANT ALL PRIVILEGES ON DATABASE aprep_db TO aprep_user;
-\q
-
-# Then restart the server to recreate tables
-```
-
-### Import Errors
-
-Make sure you're in the virtual environment:
-
-```bash
-which python  # Should show path to venv/bin/python
-```
-
-If not, activate it:
-
-```bash
-source venv/bin/activate
-```
-
-## Next Steps
-
-1. Follow the README.md for complete API usage guide
-2. Set up Ollama for AI-powered features (optional)
-3. Start testing your AI agents!
+The server allows 40 requests per IP per UTC minute and one evaluation per IP per UTC day by default. Wait for the `Retry-After` interval, or adjust the documented rate-limit settings only if the deployment requirements allow it.
