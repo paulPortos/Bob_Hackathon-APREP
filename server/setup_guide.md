@@ -32,7 +32,7 @@ GRANT ALL PRIVILEGES ON DATABASE aprep_db TO aprep_user;
 
 **Option B: SQLite (Development Only)**
 
-For quick testing, you can use SQLite by changing the DATABASE_URL in `.env`:
+For quick testing, use the SQLite `DATABASE_URL` in `.env`:
 ```
 DATABASE_URL=sqlite:///./aprep.db
 ```
@@ -64,13 +64,14 @@ cp server/.env.example server/.env
 ```
 
 Edit `server/.env` and update:
+
 - `DATABASE_URL`: Your PostgreSQL connection string
 - `ENCRYPTION_KEY`: Generate using the command below
 - `JWT_SECRET_KEY`: Generate using the command below
 
 ### 5. Generate Security Keys
 
-The `.env` file has been created with temporary keys. For production or secure development, generate new keys:
+Generate new keys for development and production:
 
 ```bash
 # Generate encryption key
@@ -80,7 +81,7 @@ python -c "from cryptography.fernet import Fernet; print('ENCRYPTION_KEY=' + Fer
 python -c "import secrets; print('JWT_SECRET_KEY=' + secrets.token_urlsafe(32))"
 ```
 
-Copy these values to your `.env` file.
+Copy these values to the active environment file.
 
 ### 6. Initialize Database
 
@@ -88,7 +89,7 @@ The database tables will be created automatically when you first run the applica
 
 ```bash
 cd server
-python -c "from app.database import init_db; init_db()"
+python -c "from app.core.database import init_db; init_db()"
 ```
 
 ### 7. Run the Application

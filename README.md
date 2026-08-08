@@ -68,18 +68,17 @@ APREP/
 |-- README.md
 |-- server/
 |   |-- app/
-|   |   |-- main.py                 # FastAPI app, CORS, startup, health checks
-|   |   |-- config.py               # Environment-backed settings
-|   |   |-- database.py             # SQLAlchemy engine/session/init
-|   |   |-- models.py               # SQLAlchemy data model
-|   |   |-- schemas.py              # Pydantic request/response models
-|   |   |-- routers/                # API routes
-|   |   |-- services/               # Evaluation, scoring, reports, clients
-|   |   `-- utils/                  # Auth and token encryption helpers
+|   |   |-- main.py                 # App composition, CORS, lifecycle only
+|   |   |-- api/
+|   |   |   `-- routes/{identity,projects,evaluations,integrations,system}/
+|   |   |-- controllers/{identity,projects,evaluations,integrations,system}/
+|   |   |-- services/{identity,projects,evaluations,integrations}/
+|   |   |-- models/{identity,projects,evaluations}/
+|   |   |-- schemas/{identity,projects,evaluations,integrations,system}/
+|   |   |-- infrastructure/{clients,scheduling}/
+|   |   `-- core/{config,database,security,exceptions}/
 |   |-- requirements.txt
-|   |-- .env.example
-|   |-- setup_guide.md
-|   `-- RENDER_DEPLOYMENT.md
+|   `-- .env.example
 `-- client/
     |-- app/                        # Next.js routes
     |-- components/                 # UI and project workflow components
@@ -91,6 +90,33 @@ APREP/
     |-- QUICK_START.md
     `-- VERCEL_DEPLOYMENT.md
 ```
+
+### Server request flow
+
+```text
+HTTP request
+  -> api/routes             validates transport and declares the endpoint
+  -> controllers            coordinates the feature request
+  -> services               performs business rules and database work
+  -> models / infrastructure persists data or calls external systems
+  -> api exception handler  converts known application errors to HTTP responses
+```
+
+Every layer is grouped by the same business area: `identity`, `projects`, `evaluations`, `integrations`, or `system`. This keeps a feature's API, controller, service, DTO, and model easy to locate without making one large flat folder.
+
+This is intentionally not a repository-heavy design. For this codebase, SQLAlchemy queries remain in feature services so a developer can follow a use case in one place. Add a repository layer only if the same queries become shared across several services or if persistence needs to be swapped.
+
+### Ownership and change guide
+
+| Need to change | Start here |
+| --- | --- |
+| Add or change a URL, HTTP status, response header, or dependency | `app/api/routes/` |
+| Coordinate request inputs or response presentation | `app/controllers/` |
+| Add project, prompt, question-slot, or evaluation rules | `app/services/` |
+| Change a table or ORM relationship | `app/models/` |
+| Change request validation or response shape | `app/schemas/` |
+| Change Ollama, target-agent HTTP, or scheduling behavior | `app/infrastructure/` |
+| Change settings, database setup, token handling, or common errors | `app/core/` |
 
 ## Data Model
 
@@ -104,19 +130,19 @@ APREP stores the evaluation workflow in relational tables:
 - `evaluations`: evaluation run metadata, status, overall score, summary, and recommendation
 - `evaluation_results`: per-question agent answer, timing, trait scores, explanation, and trait-test metadata
 
-The default backend configuration expects PostgreSQL:
+The production configuration expects PostgreSQL:
 
 ```env
 DATABASE_URL=postgresql://aprep_user:your_password@localhost:5432/aprep_db
 ```
 
-For local-only development or quick testing, SQLite is supported by changing the value:
+Development defaults to SQLite and can be configured explicitly as:
 
 ```env
 DATABASE_URL=sqlite:///./aprep.db
 ```
 
-When the backend starts, `init_db()` calls `Base.metadata.create_all(bind=engine)`. This creates missing tables but does not handle schema migrations for existing databases.
+When the backend starts, `app.core.database.init_db()` calls `Base.metadata.create_all(bind=engine)`. This creates missing tables but does not handle schema migrations for existing databases.
 
 ## Prerequisites
 
@@ -154,13 +180,14 @@ ENCRYPTION_KEY=your-generated-fernet-key
 JWT_SECRET_KEY=your-generated-jwt-secret
 JWT_ALGORITHM=HS256
 JWT_EXPIRATION_DAYS=7
+APP_ENV=development
+DEBUG=true
+LOG_LEVEL=DEBUG
 
-# Use Ollama Cloud when OLLAMA_BASE_URL is empty.
 OLLAMA_BASE_URL=
 OLLAMA_DEFAULT_MODEL=llama3.1
 OLLAMA_API_KEY=your-ollama-api-key
 
-# Local development CORS.
 CORS_ORIGINS=*
 ```
 
@@ -171,6 +198,8 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_API_KEY=
 OLLAMA_DEFAULT_MODEL=llama3.1
 ```
+
+For production, configure all settings and secrets in the deployment platform, set `APP_ENV=production`, and use explicit allowed origins. Production intentionally does not load the local `.env` file.
 
 Start the backend:
 
@@ -382,10 +411,13 @@ Optional trait tests currently cover:
 
 ## Environment Variables
 
-Backend variables are loaded from `server/.env` when running from the `server` directory.
+Development loads `server/.env` by default. Production reads settings only from the deployment process environment when `APP_ENV=production`.
 
 | Variable | Purpose |
 | --- | --- |
+| `APP_ENV` | Selects `development` or `production` configuration. Set it in the deployment environment for production. |
+| `DEBUG` | Enables FastAPI debug behavior. `true` in development and `false` in production. |
+| `LOG_LEVEL` | Intended application log verbosity. Defaults to `DEBUG` locally and `INFO` in production. |
 | `DATABASE_URL` | SQLAlchemy database URL. PostgreSQL is the default; SQLite is supported for local testing. |
 | `ENCRYPTION_KEY` | Fernet key used to encrypt stored project endpoint tokens. |
 | `JWT_SECRET_KEY` | Secret used to sign API access tokens. |
