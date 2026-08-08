@@ -2,11 +2,11 @@
 
 import logging
 
-import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.core.config import settings
+from app.infrastructure.http_client import http_client_pool
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +20,10 @@ class KeepAliveService:
         if not settings.base_url:
             return
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(f"{settings.base_url}/ping")
-                if response.status_code != 200:
-                    logger.warning("Keep-alive ping returned status %s", response.status_code)
+            client = await http_client_pool.get_client()
+            response = await client.get(f"{settings.base_url}/ping", timeout=10.0)
+            if response.status_code != 200:
+                logger.warning("Keep-alive ping returned status %s", response.status_code)
         except Exception as error:
             logger.error("Keep-alive ping failed: %s", error)
 

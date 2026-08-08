@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.core.exceptions import AppError
 from app.infrastructure.clients.ollama import ollama_client
+from app.infrastructure.http_client import http_client_pool
 from app.infrastructure.scheduling.keep_alive import keep_alive_service
 
 
@@ -29,19 +30,21 @@ def parse_cors_origins(cors_origins: str) -> list[str]:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Initialize and shut down application-owned infrastructure."""
-    init_db()
-    ollama_available = await ollama_client.check_availability()
-    print("✓ Database initialized")
-    print(
-        "✓ Ollama is available"
-        if ollama_available
-        else "⚠ Ollama is not available - evaluations will use heuristic scoring"
-    )
-    keep_alive_service.start()
+    await http_client_pool.start()
     try:
+        init_db()
+        ollama_available = await ollama_client.check_availability()
+        print("✓ Database initialized")
+        print(
+            "✓ Ollama is available"
+            if ollama_available
+            else "⚠ Ollama is not available - evaluations will use heuristic scoring"
+        )
+        keep_alive_service.start()
         yield
     finally:
         keep_alive_service.stop()
+        await http_client_pool.stop()
 
 
 def create_app() -> FastAPI:

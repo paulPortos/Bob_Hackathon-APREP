@@ -2,9 +2,8 @@
 
 from typing import Any, Optional
 
-import httpx
-
 from app.core.config import settings
+from app.infrastructure.http_client import http_client_pool
 
 
 class OllamaClient:
@@ -25,13 +24,17 @@ class OllamaClient:
 
     async def list_models(self) -> list[dict[str, Any]]:
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                if self.is_cloud:
-                    response = await client.get(f"{self.base_url}/v1/models", headers=self._headers())
-                else:
-                    response = await client.get(f"{self.base_url}/api/tags")
-                response.raise_for_status()
-                data = response.json()
+            client = await http_client_pool.get_client()
+            if self.is_cloud:
+                response = await client.get(
+                    f"{self.base_url}/v1/models",
+                    headers=self._headers(),
+                    timeout=self.timeout,
+                )
+            else:
+                response = await client.get(f"{self.base_url}/api/tags", timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
             return data.get("data" if self.is_cloud else "models", [])
         except Exception as error:
             raise RuntimeError(f"Failed to list Ollama models: {error}") from error
@@ -39,24 +42,26 @@ class OllamaClient:
     async def generate(self, prompt: str, model: Optional[str] = None) -> str:
         model = model or self.default_model
         try:
-            async with httpx.AsyncClient(timeout=self.timeout * 2) as client:
-                if self.is_cloud:
-                    response = await client.post(
-                        f"{self.base_url}/v1/chat/completions",
-                        headers=self._headers(),
-                        json={
-                            "model": model,
-                            "messages": [{"role": "user", "content": prompt}],
-                            "stream": False,
-                        },
-                    )
-                else:
-                    response = await client.post(
-                        f"{self.base_url}/api/generate",
-                        json={"model": model, "prompt": prompt, "stream": False},
-                    )
-                response.raise_for_status()
-                data = response.json()
+            client = await http_client_pool.get_client()
+            if self.is_cloud:
+                response = await client.post(
+                    f"{self.base_url}/v1/chat/completions",
+                    headers=self._headers(),
+                    json={
+                        "model": model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "stream": False,
+                    },
+                    timeout=self.timeout * 2,
+                )
+            else:
+                response = await client.post(
+                    f"{self.base_url}/api/generate",
+                    json={"model": model, "prompt": prompt, "stream": False},
+                    timeout=self.timeout * 2,
+                )
+            response.raise_for_status()
+            data = response.json()
             if self.is_cloud:
                 return data.get("choices", [{}])[0].get("message", {}).get("content", "")
             return data.get("response", "")
@@ -165,14 +170,16 @@ Explanation: [brief explanation of the scores]"""
 
     async def check_availability(self) -> bool:
         try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                if self.is_cloud:
-                    if not self.api_key:
-                        return False
-                    response = await client.get(f"{self.base_url}/v1/models", headers=self._headers())
-                else:
-                    response = await client.get(f"{self.base_url}/api/tags")
-                return response.status_code == 200
+            if self.is_cloud and not self.api_key:
+                return False
+            client = await http_client_pool.get_client()
+            if self.is_cloud:
+                response = await client.get(
+                    f"{self.base_url}/v1/models", headers=self._headers(), timeout=5
+                )
+            else:
+                response = await client.get(f"{self.base_url}/api/tags", timeout=5)
+            return response.status_code == 200
         except Exception:
             return False
 

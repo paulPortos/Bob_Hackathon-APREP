@@ -6,6 +6,7 @@ from typing import Optional
 import httpx
 
 from app.core.config import settings
+from app.infrastructure.http_client import http_client_pool
 
 
 class AgentEndpointClient:
@@ -26,8 +27,13 @@ class AgentEndpointClient:
         started_at = time.time()
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(url, json={request_field: message}, headers=headers)
+            client = await http_client_pool.get_client()
+            response = await client.post(
+                url,
+                json={request_field: message},
+                headers=headers,
+                timeout=self.timeout,
+            )
             elapsed_ms = int((time.time() - started_at) * 1000)
 
             if response.status_code != 200:
