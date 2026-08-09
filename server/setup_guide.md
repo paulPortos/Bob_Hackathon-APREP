@@ -10,7 +10,7 @@ source server/venv/bin/activate
 pip install -r server/requirements.txt
 cp server/.env.example server/.env
 cd server
-uvicorn app.main:app --reload
+APP_ENV=development uvicorn app.main:app --reload
 ```
 
 The API is available at `http://localhost:8000`. Use `http://localhost:8000/docs` to explore and test the API.
@@ -34,13 +34,13 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-Ollama is optional. Without a reachable Ollama service or API key, APREP uses heuristic scoring. For production, set `APP_ENV=production` and provide all configuration through the deployment environment, including explicit `CORS_ORIGINS` and a dedicated `IP_HASH_SALT`.
+Ollama is optional. Without a reachable Ollama service or API key, APREP uses heuristic scoring. For production, set `APP_ENV=production` in the hosting environment and provide all configuration through that environment, including explicit `CORS_ORIGINS`, `ALLOWED_HOSTS`, `AGENT_ENDPOINT_ALLOWED_HOSTS`, and a dedicated `IP_HASH_SALT`.
 
 ## Troubleshooting
 
 **Server fails during startup**
 
-Confirm `server/.env` exists, has valid `ENCRYPTION_KEY` and `JWT_SECRET_KEY` values, and that the virtual environment is active.
+Confirm `server/.env` exists, has valid `ENCRYPTION_KEY` and `JWT_SECRET_KEY` values, that `APP_ENV=development` is set in the command or shell, and that the virtual environment is active.
 
 **Database connection error**
 

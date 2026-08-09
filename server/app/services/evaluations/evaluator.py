@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
@@ -5,6 +7,8 @@ from app.models import Project, Prompt, QuestionSlot, Question, Evaluation, Eval
 from app.infrastructure.clients.agent_endpoint import agent_endpoint_client
 from app.services.evaluations.scoring import scoring_service
 from app.core.security import decrypt_token
+
+logger = logging.getLogger(__name__)
 
 
 class EvaluatorService:
@@ -172,11 +176,12 @@ class EvaluatorService:
             
             return evaluation
         
-        except Exception as e:
+        except Exception:
             # Mark evaluation as failed
+            logger.exception("Evaluation %s failed", evaluation.id)
             evaluation.status = "failed"
             evaluation.completed_at = datetime.utcnow()
-            evaluation.explanation_summary = f"Evaluation failed: {str(e)}"
+            evaluation.explanation_summary = "Evaluation failed. Please try again later."
             db.commit()
             raise
     

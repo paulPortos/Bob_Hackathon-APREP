@@ -483,7 +483,7 @@ Frontend cannot reach backend:
 
 Dedicated deployment notes live in:
 
-- `server/RENDER_DEPLOYMENT.md` for the FastAPI backend and PostgreSQL on Render
+- `server/DEPLOYMENT.md` for the FastAPI backend and PostgreSQL
 - `client/VERCEL_DEPLOYMENT.md` for the Next.js frontend on Vercel
 
 For production-like deployments:

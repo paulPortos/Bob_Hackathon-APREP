@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class OllamaModel(BaseModel):
@@ -16,8 +16,8 @@ class OllamaModelsResponse(BaseModel):
 
 
 class OllamaTestRequest(BaseModel):
-    prompt: str
-    model: Optional[str] = None
+    prompt: str = Field(..., min_length=1, max_length=4_000)
+    model: Optional[str] = Field(default=None, max_length=120)
 
 
 class OllamaTestResponse(BaseModel):

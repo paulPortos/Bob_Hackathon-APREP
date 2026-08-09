@@ -10,12 +10,14 @@ from app.core.config.production import ProductionSettings
 
 @lru_cache
 def get_settings() -> ApplicationSettings:
-    environment = os.getenv("APP_ENV", "development").strip().lower()
+    environment = os.getenv("APP_ENV", "").strip().lower()
     if environment == "development":
         return DevelopmentSettings()
     if environment == "production":
         return ProductionSettings()
-    raise RuntimeError("APP_ENV must be either 'development' or 'production'")
+    raise RuntimeError(
+        "APP_ENV must be explicitly set to 'development' or 'production' before starting APREP"
+    )
 
 
 settings = get_settings()

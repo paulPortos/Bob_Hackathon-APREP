@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class QuestionCreate(BaseModel):
-    question_text: str
-    expected_answer: Optional[str] = None
+    question_text: str = Field(..., min_length=1, max_length=5_000)
+    expected_answer: Optional[str] = Field(default=None, max_length=10_000)
     order: int
 
 
@@ -24,8 +24,8 @@ class QuestionResponse(BaseModel):
 
 
 class QuestionSlotCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=2_000)
     questions: list[QuestionCreate] = Field(..., max_length=10)
 
     @field_validator("questions")
@@ -37,8 +37,8 @@ class QuestionSlotCreate(BaseModel):
 
 
 class QuestionSlotUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=2_000)
     questions: Optional[list[QuestionCreate]] = None
 
     @field_validator("questions")
@@ -66,7 +66,7 @@ class QuestionSlotResponse(BaseModel):
 
 class GenerateQuestionsRequest(BaseModel):
     count: int = Field(..., ge=1, le=10)
-    purpose: str = Field(..., min_length=10)
+    purpose: str = Field(..., min_length=10, max_length=2_000)
     use_prompt: bool = True
 
 

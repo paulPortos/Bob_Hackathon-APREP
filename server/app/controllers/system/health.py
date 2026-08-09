@@ -5,7 +5,6 @@ from datetime import datetime
 from sqlalchemy import text
 
 from app.core.database import engine
-from app.infrastructure.clients.ollama import ollama_client
 from app.schemas.system.health import HealthResponse
 
 
@@ -25,13 +24,13 @@ class HealthController:
             with engine.connect() as connection:
                 connection.execute(text("SELECT 1"))
             database = "healthy"
-        except Exception as error:
-            database = f"unhealthy: {error}"
-        ollama = "available" if await ollama_client.check_availability() else "unavailable"
+        except Exception:
+            database = "unhealthy"
         return HealthResponse(
             status="healthy" if database == "healthy" else "degraded",
             database=database,
-            ollama=ollama,
+            # Avoid spending an Ollama request on every unauthenticated health probe.
+            ollama="not_checked",
         )
 
 

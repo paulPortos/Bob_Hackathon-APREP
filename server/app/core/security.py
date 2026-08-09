@@ -14,17 +14,12 @@ password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 token_cipher = Fernet(settings.encryption_key.encode())
 
 
-def _bcrypt_safe(password: str) -> str:
-    """Limit passwords to bcrypt's 72-byte input limit without breaking UTF-8."""
-    return password.encode("utf-8")[:72].decode("utf-8", errors="ignore")
-
-
 def hash_password(password: str) -> str:
-    return password_context.hash(_bcrypt_safe(password))
+    return password_context.hash(password)
 
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    return password_context.verify(_bcrypt_safe(password), hashed_password)
+    return password_context.verify(password, hashed_password)
 
 
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
@@ -32,7 +27,12 @@ def create_access_token(subject: str, expires_delta: Optional[timedelta] = None)
         expires_delta or timedelta(days=settings.jwt_expiration_days)
     )
     return jwt.encode(
-        {"sub": subject, "exp": expires_at},
+        {
+            "sub": subject,
+            "exp": expires_at,
+            "iss": settings.jwt_issuer,
+            "aud": settings.jwt_audience,
+        },
         settings.jwt_secret_key,
         algorithm=settings.jwt_algorithm,
     )
@@ -41,7 +41,12 @@ def create_access_token(subject: str, expires_delta: Optional[timedelta] = None)
 def decode_access_token(token: str) -> Optional[str]:
     try:
         payload = jwt.decode(
-            token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm]
+            token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+            audience=settings.jwt_audience,
+            issuer=settings.jwt_issuer,
+            options={"require_exp": True, "require_sub": True},
         )
         return payload.get("sub")
     except JWTError:

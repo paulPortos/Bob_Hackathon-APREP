@@ -11,7 +11,11 @@ class HTTPClientPool:
 
     async def start(self) -> None:
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient()
+            self._client = httpx.AsyncClient(
+                follow_redirects=False,
+                limits=httpx.Limits(max_connections=20, max_keepalive_connections=5, keepalive_expiry=20),
+                trust_env=False,
+            )
 
     async def get_client(self) -> httpx.AsyncClient:
         await self.start()

@@ -82,7 +82,7 @@ class QuestionSlotService:
                 agent_prompt=prompt.content if prompt else None,
             )
         except Exception as error:
-            raise ExternalServiceError(f"Failed to generate questions: {error}") from error
+            raise ExternalServiceError("Question generation service is unavailable") from error
 
         slot = QuestionSlot(
             project_id=project_id,

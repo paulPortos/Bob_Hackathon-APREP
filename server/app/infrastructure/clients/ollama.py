@@ -158,14 +158,14 @@ Explanation: [brief explanation of the scores]"""
                 elif "honesty" in key:
                     scores["honesty_score"] = score
             return scores
-        except Exception as error:
+        except Exception:
             return {
                 "accuracy_score": 50.0,
                 "semantic_accuracy_score": 50.0,
                 "prompt_adherence_score": 50.0,
                 "security_score": 50.0,
                 "honesty_score": 50.0,
-                "explanation": f"Ollama evaluation failed: {error}. Using default scores.",
+                "explanation": "AI scoring was unavailable. Using default scores.",
             }
 
     async def check_availability(self) -> bool:

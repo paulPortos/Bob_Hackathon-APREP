@@ -11,6 +11,8 @@ class DevelopmentSettings(ApplicationSettings):
     log_level: str = "DEBUG"
     database_url: str = "postgresql+psycopg2://aprep_user:change-me@localhost:5432/aprep_db"
     cors_origins: str = "*"
+    allowed_hosts: str = "*"
+    enable_diagnostic_routes: bool = True
 
     model_config = SettingsConfigDict(
         env_file=SERVER_DIRECTORY / ".env",
