@@ -59,15 +59,15 @@ interface SectionHeaderProps {
 
 function SectionHeader({ eyebrow, title, description, actions }: SectionHeaderProps) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
+    <div className="grid min-w-0 gap-4 md:h-[112px] md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+      <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">{eyebrow}</p>
         <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
           {title}
         </h2>
-        <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
+        <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500 md:line-clamp-2">{description}</p>
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
+      {actions && <div className="flex shrink-0 flex-wrap gap-2 md:self-end md:justify-end">{actions}</div>}
     </div>
   );
 }
@@ -112,7 +112,7 @@ function MetricCard({
   detail: string;
 }) {
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/[0.03]">
+    <article className="min-w-0 bg-white p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-slate-500">{label}</p>
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
@@ -152,7 +152,13 @@ function OverviewTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <SectionHeader
+        eyebrow="Project snapshot"
+        title="Overview"
+        description="Review readiness, connection settings, and the API contract used for every evaluation."
+      />
+
+      <section className="grid grid-cols-1 gap-px overflow-hidden rounded-3xl border border-slate-200 bg-slate-200 shadow-sm shadow-slate-900/[0.03] sm:grid-cols-3">
         <MetricCard
           icon={FileText}
           label="Agent prompt"
@@ -171,9 +177,9 @@ function OverviewTab({ projectId }: { projectId: string }) {
           value={evaluations?.length ?? 0}
           detail="Runs saved to history"
         />
-      </div>
+      </section>
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-900/[0.03]">
+      <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-900/[0.03]">
         <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Connection</p>
@@ -183,15 +189,15 @@ function OverviewTab({ projectId }: { projectId: string }) {
             variant="secondary"
             size="sm"
             onClick={() => setIsEditModalOpen(true)}
-            className="rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            className="w-full rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:w-auto"
           >
             <Settings2 className="mr-1.5 h-4 w-4" strokeWidth={1.8} />
             Edit configuration
           </Button>
         </div>
 
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
-          <div className="space-y-5 px-5 py-6 sm:px-6 lg:border-r lg:border-slate-100">
+        <div className="grid min-w-0 grid-cols-1 gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.85fr)]">
+          <div className="min-w-0 space-y-5 px-5 py-6 sm:px-6 lg:border-r lg:border-slate-100">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Endpoint</p>
               <a
@@ -201,8 +207,8 @@ function OverviewTab({ projectId }: { projectId: string }) {
                 className="mt-2 flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
               >
                 <Globe2 className="h-4 w-4 shrink-0 text-sky-700" strokeWidth={1.8} />
-                <span className="truncate">{project.endpoint_url}</span>
-                <ExternalLink className="ml-auto h-4 w-4 shrink-0 text-slate-400" strokeWidth={1.8} />
+                <span className="min-w-0 flex-1 truncate">{project.endpoint_url}</span>
+                <ExternalLink className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={1.8} />
               </a>
             </div>
 
@@ -228,19 +234,19 @@ function OverviewTab({ projectId }: { projectId: string }) {
             </div>
           </div>
 
-          <div className="space-y-5 bg-slate-50/60 px-5 py-6 sm:px-6">
-            <div>
+          <div className="min-w-0 space-y-5 border-t border-slate-100 bg-slate-50/60 px-5 py-6 sm:px-6 lg:border-t-0">
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <Braces className="h-4 w-4 text-slate-500" strokeWidth={1.8} />
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Request template</p>
               </div>
-              <pre className="mt-2 max-h-52 overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-5 text-cyan-100 shadow-inner">
+              <pre className="mt-2 max-w-full whitespace-pre-wrap break-all rounded-2xl bg-slate-950 p-4 text-xs leading-5 text-cyan-100 shadow-inner">
                 <code>{project.request_body_template}</code>
               </pre>
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Answer path</p>
-              <code className="mt-2 block overflow-x-auto rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-xs font-medium text-slate-700">
+              <code className="mt-2 block max-w-full break-all rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-xs font-medium leading-5 text-slate-700">
                 {project.response_path}
               </code>
             </div>
@@ -755,7 +761,7 @@ export default function ProjectPage() {
       <div className="min-h-screen bg-slate-50/70">
         <Navbar />
 
-        <main className="mx-auto max-w-[1400px] px-4 py-7 sm:px-6 sm:py-9 lg:px-12">
+        <main className="mx-auto w-full min-w-0 max-w-[1400px] overflow-x-clip px-4 py-7 sm:px-6 sm:py-9 lg:px-12">
           <Link
             href="/home"
             className="inline-flex items-center gap-1.5 rounded-lg text-sm font-medium text-slate-500 transition hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"

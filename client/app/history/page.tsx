@@ -1,14 +1,23 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/layout/Navbar';
+import EvaluationDetailsModal from '@/components/project/EvaluationDetailsModal';
 import Spinner from '@/components/ui/Spinner';
 import { apiClient } from '@/lib/api';
+import type { Evaluation } from '@/types';
 import { History as HistoryIcon } from 'lucide-react';
 import Link from 'next/link';
 
+type EvaluationHistoryItem = Evaluation & {
+  projectName: string;
+};
+
 export default function HistoryPage() {
+  const [selectedEvaluationId, setSelectedEvaluationId] = useState<string | null>(null);
+
   // Fetch all projects first
   const { data: projects, isLoading: projectsLoading } = useQuery({
     queryKey: ['projects'],
@@ -93,7 +102,7 @@ export default function HistoryPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {allEvaluations.map((evaluation: any) => (
+                  {allEvaluations.map((evaluation: EvaluationHistoryItem) => (
                     <tr key={evaluation.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Link
@@ -120,12 +129,17 @@ export default function HistoryPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {evaluation.overall_score
+                        {evaluation.overall_score != null
                           ? `${evaluation.overall_score.toFixed(1)}%`
                           : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button className="text-primary-600 hover:text-primary-700 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedEvaluationId(evaluation.id)}
+                          disabled={evaluation.status !== 'completed'}
+                          className="font-medium text-primary-600 hover:text-primary-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                        >
                           View Details
                         </button>
                       </td>
@@ -135,6 +149,12 @@ export default function HistoryPage() {
               </table>
             </div>
           )}
+
+          <EvaluationDetailsModal
+            isOpen={selectedEvaluationId !== null}
+            onClose={() => setSelectedEvaluationId(null)}
+            evaluationId={selectedEvaluationId ?? ''}
+          />
         </main>
       </div>
     </ProtectedRoute>

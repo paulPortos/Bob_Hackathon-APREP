@@ -1,15 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
+import TermsAndPrivacyModal from '@/components/legal/TermsAndPrivacyModal';
 import {
   ChevronDown,
   Clock3,
+  FileText,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -29,6 +31,31 @@ export default function Navbar({ onCreateProject }: NavbarProps) {
   const { user, logout } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!userMenuRef.current?.contains(event.target as Node)) setUserMenuOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setUserMenuOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [userMenuOpen]);
+
+  useEffect(() => {
+    setUserMenuOpen(false);
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const handleLogout = () => {
     logout();
@@ -48,13 +75,14 @@ export default function Navbar({ onCreateProject }: NavbarProps) {
     }`;
 
   return (
+    <>
     <nav className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href="/home" className="flex items-center gap-2.5" aria-label="APREP home">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950 shadow-sm shadow-slate-900/20">
-                <Image src="/brand/aprep-mark.png" alt="APREP" width={30} height={30} />
+              <div className="relative h-9 w-9 overflow-hidden rounded-xl shadow-sm shadow-slate-900/20">
+                <Image src="/brand/logo.png" alt="APREP" fill sizes="36px" className="object-cover" />
               </div>
               <span className="hidden text-lg font-bold tracking-tight text-slate-950 sm:block">
                 APREP
@@ -98,7 +126,7 @@ export default function Navbar({ onCreateProject }: NavbarProps) {
               </Button>
             )}
 
-            <div className="relative">
+            <div ref={userMenuRef} className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex max-w-[240px] items-center gap-2 rounded-xl px-2 py-1.5 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-300"
@@ -115,31 +143,39 @@ export default function Navbar({ onCreateProject }: NavbarProps) {
               </button>
 
               {userMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setUserMenuOpen(false)}
-                  />
-                  <div
-                    className="absolute right-0 z-20 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10"
-                    role="menu"
-                  >
-                    <div className="border-b border-slate-100 px-3 py-2.5">
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Account</p>
-                      <p className="mt-1 truncate text-sm font-medium text-slate-900">
-                        {user?.email}
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleLogout}
-                      className="mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
-                      role="menuitem"
-                    >
-                      <LogOut className="mr-2 h-4 w-4" strokeWidth={1.8} />
-                      Log out
-                    </button>
+                <div
+                  className="absolute right-0 z-20 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10"
+                  role="menu"
+                >
+                  <div className="border-b border-slate-100 px-3 py-2.5">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Account</p>
+                    <p className="mt-1 truncate text-sm font-medium text-slate-900">
+                      {user?.email}
+                    </p>
                   </div>
-                </>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      setLegalModalOpen(true);
+                    }}
+                    className="mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                    role="menuitem"
+                  >
+                    <FileText className="mr-2 h-4 w-4" strokeWidth={1.8} />
+                    Terms & privacy
+                  </button>
+                  <div className="my-1 border-t border-slate-100" />
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                    role="menuitem"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" strokeWidth={1.8} />
+                    Log out
+                  </button>
+                </div>
               )}
             </div>
 
@@ -195,6 +231,8 @@ export default function Navbar({ onCreateProject }: NavbarProps) {
         </div>
       )}
     </nav>
+    <TermsAndPrivacyModal isOpen={legalModalOpen} onClose={() => setLegalModalOpen(false)} />
+    </>
   );
 }
 

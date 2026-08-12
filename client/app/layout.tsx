@@ -6,8 +6,12 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'APREP - Agent Prompt Evaluation Platform',
+  title: 'APREP - Agent Preparation',
   description: 'Test and evaluate AI agents against expected behaviors, security requirements, and performance traits',
+  icons: {
+    icon: '/brand/logo.png',
+    apple: '/brand/logo.png',
+  },
 };
 
 export default function RootLayout({

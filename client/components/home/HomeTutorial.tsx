@@ -181,21 +181,44 @@ export default function HomeTutorial({
     if (!isOpen) return;
 
     let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+    const settleTimers: ReturnType<typeof setTimeout>[] = [];
+    let observedTarget: HTMLElement | null = null;
+    const resizeObserver = new ResizeObserver(() => updateTarget());
     const updateTarget = () => {
       const target = getVisibleElement(spotlightSelector);
       if (!target) {
+        if (observedTarget) resizeObserver.unobserve(observedTarget);
+        observedTarget = null;
         setTargetRect(null);
         return;
       }
 
+      if (observedTarget !== target) {
+        if (observedTarget) resizeObserver.unobserve(observedTarget);
+        observedTarget = target;
+        resizeObserver.observe(target);
+      }
+
       const rect = target.getBoundingClientRect();
-      setTargetRect({
+      const nextRect = {
         top: rect.top,
         right: rect.right,
         bottom: rect.bottom,
         left: rect.left,
         width: rect.width,
         height: rect.height,
+      };
+      setTargetRect((current) => {
+        if (
+          current &&
+          Math.abs(current.top - nextRect.top) < 0.5 &&
+          Math.abs(current.left - nextRect.left) < 0.5 &&
+          Math.abs(current.width - nextRect.width) < 0.5 &&
+          Math.abs(current.height - nextRect.height) < 0.5
+        ) {
+          return current;
+        }
+        return nextRect;
       });
     };
 
@@ -209,13 +232,18 @@ export default function HomeTutorial({
     }
 
     updateTarget();
+    [60, 140, 240, 380].forEach((delay) => {
+      settleTimers.push(setTimeout(updateTarget, delay));
+    });
     const observer = new MutationObserver(updateTarget);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
     window.addEventListener('resize', updateTarget);
     window.addEventListener('scroll', updateTarget, true);
 
     return () => {
       if (scrollTimer) clearTimeout(scrollTimer);
+      settleTimers.forEach(clearTimeout);
+      resizeObserver.disconnect();
       observer.disconnect();
       window.removeEventListener('resize', updateTarget);
       window.removeEventListener('scroll', updateTarget, true);
@@ -244,7 +272,7 @@ export default function HomeTutorial({
 
   const content = stepContent[step];
   const Icon = content.icon;
-  const padding = 8;
+  const padding = step === 'project-name' ? 10 : 8;
   const tooltipWidth = Math.min(340, window.innerWidth - 32);
   const tooltipHeight = 300;
   const gap = 18;

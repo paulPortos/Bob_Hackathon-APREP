@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
@@ -158,35 +159,35 @@ export default function AuthPage() {
   };
 
   return (
-    <main className="min-h-[100svh] bg-[#f7f9fc] lg:grid lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
-      <section className="relative hidden overflow-hidden bg-slate-950 px-10 py-12 text-white lg:flex lg:flex-col xl:px-16">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(14,165,233,0.32),transparent_28%),radial-gradient(circle_at_80%_75%,rgba(124,58,237,0.28),transparent_30%)]" />
-        <div className="absolute -right-28 top-24 h-80 w-80 rounded-full border border-white/10" />
-        <div className="absolute -bottom-24 -left-20 h-80 w-80 rounded-full border border-cyan-300/10" />
+    <main className="min-h-[100svh] bg-slate-50/70 lg:grid lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
+      <section className="relative hidden overflow-hidden border-r border-slate-200 bg-white px-10 py-12 text-slate-950 lg:flex lg:flex-col xl:px-16">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(14,165,233,0.10),transparent_28%),radial-gradient(circle_at_80%_75%,rgba(124,58,237,0.08),transparent_30%)]" />
+        <div className="absolute -right-28 top-24 h-80 w-80 rounded-full border border-slate-200/70" />
+        <div className="absolute -bottom-24 -left-20 h-80 w-80 rounded-full border border-sky-100" />
 
-        <div className="relative flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15 backdrop-blur">
-            <Image src="/brand/aprep-mark.png" alt="APREP" width={36} height={36} priority />
+        <Link href="/" className="relative flex w-fit items-center gap-3" aria-label="Back to APREP landing page">
+          <div className="relative h-11 w-11 overflow-hidden rounded-2xl ring-1 ring-slate-200">
+            <Image src="/brand/logo.png" alt="APREP" fill sizes="44px" className="object-cover" priority />
           </div>
           <span className="text-lg font-semibold tracking-tight">APREP</span>
-        </div>
+        </Link>
 
         <div className="relative my-auto max-w-lg py-16">
-          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200">
+          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">
             Agent quality, made clear
           </p>
           <h1 className="max-w-md text-4xl font-semibold leading-[1.08] tracking-tight xl:text-5xl">
             Build confidence in every agent response.
           </h1>
-          <p className="mt-6 max-w-md text-base leading-7 text-slate-300 xl:text-lg">
+          <p className="mt-6 max-w-md text-base leading-7 text-slate-500 xl:text-lg">
             APREP gives your team one calm workspace to test behavior, spot risks, and share results.
           </p>
 
           <div className="mt-10 space-y-5">
             {productHighlights.map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-3 text-sm text-slate-200">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/10">
-                  <Icon className="h-4 w-4 text-cyan-200" aria-hidden="true" />
+              <div key={text} className="flex items-center gap-3 text-sm text-slate-600">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 ring-1 ring-slate-200">
+                  <Icon className="h-4 w-4 text-sky-700" aria-hidden="true" />
                 </span>
                 <span>{text}</span>
               </div>
@@ -197,14 +198,14 @@ export default function AuthPage() {
         <p className="relative text-xs text-slate-400">Built for thoughtful AI evaluation.</p>
       </section>
 
-      <section className="flex min-h-[100svh] items-center justify-center px-5 py-10 sm:px-8 lg:px-12">
+      <section className="flex min-h-[100svh] items-center justify-center bg-slate-50/70 px-5 py-10 sm:px-8 lg:px-12">
         <div className="w-full max-w-[29rem]">
-          <div className="mb-10 flex items-center gap-3 lg:hidden">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 shadow-lg shadow-slate-900/15">
-              <Image src="/brand/aprep-mark.png" alt="APREP" width={36} height={36} priority />
+          <Link href="/" className="mb-10 flex w-fit items-center gap-3 lg:hidden" aria-label="Back to APREP landing page">
+            <div className="relative h-11 w-11 overflow-hidden rounded-2xl shadow-lg shadow-slate-900/15">
+              <Image src="/brand/logo.png" alt="APREP" fill sizes="44px" className="object-cover" priority />
             </div>
             <span className="text-lg font-semibold tracking-tight text-slate-950">APREP</span>
-          </div>
+          </Link>
 
           <div className="mb-8">
             <p className="text-sm font-medium text-primary-700">Welcome to APREP</p>

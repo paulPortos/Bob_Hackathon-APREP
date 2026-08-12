@@ -15,8 +15,9 @@ This guide will help you deploy the APREP frontend client to Vercel.
 Ensure your `.env.example` file is up to date:
 
 ```bash
-# API Configuration
 NEXT_PUBLIC_API_URL=https://your-backend-api.onrender.com/api
+NEXT_PUBLIC_OPERATOR_NAME=APREP Demo Operator
+NEXT_PUBLIC_PRIVACY_CONTACT=privacy@example.com
 ```
 
 ### 2. Deploy to Vercel
@@ -36,6 +37,8 @@ NEXT_PUBLIC_API_URL=https://your-backend-api.onrender.com/api
 5. Add Environment Variables:
    - Click **"Environment Variables"**
    - Add: `NEXT_PUBLIC_API_URL` = `https://your-backend-api.onrender.com/api`
+   - Add: `NEXT_PUBLIC_OPERATOR_NAME` = the person or organization operating the demo
+   - Add: `NEXT_PUBLIC_PRIVACY_CONTACT` = the email used for privacy and deletion requests
    - Make sure to replace with your actual backend URL
 
 6. Click **"Deploy"**
@@ -73,8 +76,10 @@ vercel
 6. Set environment variables:
 ```bash
 vercel env add NEXT_PUBLIC_API_URL production
+vercel env add NEXT_PUBLIC_OPERATOR_NAME production
+vercel env add NEXT_PUBLIC_PRIVACY_CONTACT production
 ```
-Enter your backend API URL when prompted.
+Enter each production value when prompted.
 
 7. Deploy to production:
 ```bash
@@ -104,6 +109,8 @@ Required environment variables for production:
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_API_URL` | Backend API base URL | `https://your-api.onrender.com/api` |
+| `NEXT_PUBLIC_OPERATOR_NAME` | Public identity of the demo operator | `APREP Demo Operator` |
+| `NEXT_PUBLIC_PRIVACY_CONTACT` | Public privacy-request email | `privacy@example.com` |
 
 ## Automatic Deployments
 

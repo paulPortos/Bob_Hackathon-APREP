@@ -228,7 +228,7 @@ export default function CreateProjectModal({
             title="Project details"
             info="Use a recognizable name so the agent is easy to find in project and evaluation history."
           />
-          <div data-tour="project-name">
+          <div className="w-full" data-tour="project-name">
             <Input
               label="Project name (optional)"
               placeholder="Customer support agent"

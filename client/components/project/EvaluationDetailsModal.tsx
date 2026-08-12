@@ -62,10 +62,40 @@ function resultAverage(result: EvaluationResult): number {
   return scoreMetrics.reduce((sum, metric) => sum + result[metric.key], 0) / scoreMetrics.length;
 }
 
-function performanceLabel(score: number): string {
-  if (score >= 80) return 'Going well';
-  if (score >= 60) return 'Mixed result';
-  return 'Needs attention';
+const performanceTones = {
+  healthy: {
+    label: 'Healthy',
+    range: '80–100',
+    dot: 'bg-emerald-700',
+    bar: 'bg-emerald-700',
+    badge: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+    surface: 'border-emerald-200 bg-emerald-50/40',
+    value: 'text-emerald-800',
+  },
+  caution: {
+    label: 'Caution',
+    range: '60–79',
+    dot: 'bg-amber-700',
+    bar: 'bg-amber-700',
+    badge: 'border-amber-200 bg-amber-50 text-amber-900',
+    surface: 'border-amber-200 bg-amber-50/40',
+    value: 'text-amber-900',
+  },
+  critical: {
+    label: 'Critical',
+    range: 'Below 60',
+    dot: 'bg-rose-700',
+    bar: 'bg-rose-700',
+    badge: 'border-rose-200 bg-rose-50 text-rose-900',
+    surface: 'border-rose-200 bg-rose-50/40',
+    value: 'text-rose-900',
+  },
+} as const;
+
+function getPerformanceTone(score: number) {
+  if (score >= 80) return performanceTones.healthy;
+  if (score >= 60) return performanceTones.caution;
+  return performanceTones.critical;
 }
 
 function splitExplanation(explanation: string): string[] {
@@ -324,17 +354,35 @@ function AnalyticsView({ results }: { results: EvaluationResult[] }) {
     questionOrder === 'lowest' ? a.score - b.score : b.score - a.score
   );
   const distribution = [
-    { label: 'Going well', range: '80–100', count: questionAnalytics.filter(({ score }) => score >= 80).length },
     {
-      label: 'Mixed result',
-      range: '60–79',
+      ...performanceTones.healthy,
+      count: questionAnalytics.filter(({ score }) => score >= 80).length,
+    },
+    {
+      ...performanceTones.caution,
       count: questionAnalytics.filter(({ score }) => score >= 60 && score < 80).length,
     },
-    { label: 'Needs attention', range: 'Below 60', count: questionAnalytics.filter(({ score }) => score < 60).length },
+    {
+      ...performanceTones.critical,
+      count: questionAnalytics.filter(({ score }) => score < 60).length,
+    },
   ];
+  const strongestTone = strongest ? getPerformanceTone(strongest.score) : undefined;
+  const weakestTone = weakest ? getPerformanceTone(weakest.score) : undefined;
 
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <span className="text-xs font-semibold text-slate-600">Score guide</span>
+        {Object.values(performanceTones).map((tone) => (
+          <span key={tone.label} className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+            <span className={`h-2 w-2 rounded-full ${tone.dot}`} />
+            <span className="font-medium text-slate-700">{tone.label}</span>
+            <span>{tone.range}</span>
+          </span>
+        ))}
+      </div>
+
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-xs font-medium text-slate-500">Responses tested</p>
@@ -346,15 +394,19 @@ function AnalyticsView({ results }: { results: EvaluationResult[] }) {
             {averageResponseTime.toFixed(0)} <span className="text-sm font-medium text-slate-400">ms</span>
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className={`rounded-2xl border p-4 ${strongestTone?.surface || 'border-slate-200 bg-white'}`}>
           <p className="text-xs font-medium text-slate-500">Strongest area</p>
           <p className="mt-2 truncate text-base font-semibold text-slate-950">{strongest?.label || 'No data'}</p>
-          <p className="mt-1 text-xs tabular-nums text-slate-500">{strongest?.score.toFixed(0) || 0} average</p>
+          <p className={`mt-1 text-xs font-medium tabular-nums ${strongestTone?.value || 'text-slate-500'}`}>
+            {strongestTone?.label || 'No status'} · {strongest?.score.toFixed(0) || 0} average
+          </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className={`rounded-2xl border p-4 ${weakestTone?.surface || 'border-slate-200 bg-white'}`}>
           <p className="text-xs font-medium text-slate-500">Focus area</p>
           <p className="mt-2 truncate text-base font-semibold text-slate-950">{weakest?.label || 'No data'}</p>
-          <p className="mt-1 text-xs tabular-nums text-slate-500">{weakest?.score.toFixed(0) || 0} average</p>
+          <p className={`mt-1 text-xs font-medium tabular-nums ${weakestTone?.value || 'text-slate-500'}`}>
+            {weakestTone?.label || 'No status'} · {weakest?.score.toFixed(0) || 0} average
+          </p>
         </div>
       </section>
 
@@ -362,27 +414,30 @@ function AnalyticsView({ results }: { results: EvaluationResult[] }) {
         <h3 className="text-base font-semibold text-slate-950">Performance profile</h3>
         <p className="mt-1 text-sm text-slate-500">Average score across all evaluated responses.</p>
         <div className="mt-5 grid gap-x-8 gap-y-4 md:grid-cols-2">
-          {profile.map((metric) => (
-            <div key={metric.key}>
-              <div className="mb-2 flex items-center justify-between gap-4 text-sm">
-                <span className="font-medium text-slate-700">{metric.label}</span>
-                <span className="font-semibold tabular-nums text-slate-950">{metric.score.toFixed(0)}</span>
-              </div>
-              <div
-                className="h-2 overflow-hidden rounded-full bg-slate-100"
-                role="progressbar"
-                aria-label={`${metric.label}: ${metric.score.toFixed(0)} out of 100`}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(metric.score)}
-              >
+          {profile.map((metric) => {
+            const tone = getPerformanceTone(metric.score);
+            return (
+              <div key={metric.key}>
+                <div className="mb-2 flex items-center justify-between gap-4 text-sm">
+                  <span className="font-medium text-slate-700">{metric.label}</span>
+                  <span className={`font-semibold tabular-nums ${tone.value}`}>{metric.score.toFixed(0)}</span>
+                </div>
                 <div
-                  className="h-full rounded-full bg-sky-700"
-                  style={{ width: `${Math.max(0, Math.min(metric.score, 100))}%` }}
-                />
+                  className="h-2 overflow-hidden rounded-full bg-slate-100"
+                  role="progressbar"
+                  aria-label={`${metric.label}: ${metric.score.toFixed(0)} out of 100, ${tone.label}`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(metric.score)}
+                >
+                  <div
+                    className={`h-full rounded-full ${tone.bar}`}
+                    style={{ width: `${Math.max(0, Math.min(metric.score, 100))}%` }}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -393,16 +448,16 @@ function AnalyticsView({ results }: { results: EvaluationResult[] }) {
           {distribution.map((item) => {
             const percentage = results.length ? (item.count / results.length) * 100 : 0;
             return (
-              <div key={item.label} className="rounded-xl border border-slate-200 p-3">
+              <div key={item.label} className={`rounded-xl border p-3 ${item.surface}`}>
                 <div className="flex items-start justify-between gap-3">
                   <span>
-                    <span className="block text-xs font-semibold text-slate-700">{item.label}</span>
+                    <span className={`block text-xs font-semibold ${item.value}`}>{item.label}</span>
                     <span className="mt-0.5 block text-[11px] text-slate-400">{item.range}</span>
                   </span>
-                  <span className="text-lg font-semibold tabular-nums text-slate-950">{item.count}</span>
+                  <span className={`text-lg font-semibold tabular-nums ${item.value}`}>{item.count}</span>
                 </div>
                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <div className="h-full rounded-full bg-slate-700" style={{ width: `${percentage}%` }} />
+                  <div className={`h-full rounded-full ${item.bar}`} style={{ width: `${percentage}%` }} />
                 </div>
               </div>
             );
@@ -448,59 +503,65 @@ function AnalyticsView({ results }: { results: EvaluationResult[] }) {
 
         {rankedResults.length ? (
           <div className="mt-5 grid gap-3 xl:grid-cols-2">
-            {rankedResults.map(({ result, score, originalIndex }) => (
-              <article key={result.id} className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
-                    {originalIndex + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
-                        {performanceLabel(score)}
-                      </span>
-                      {result.is_trait_test && (
-                        <span className="text-[10px] font-medium capitalize text-slate-400">
-                          {formatTraitType(result.trait_type)}
+            {rankedResults.map(({ result, score, originalIndex }) => {
+              const questionTone = getPerformanceTone(score);
+              return (
+                <article key={result.id} className={`rounded-2xl border p-4 ${questionTone.surface}`}>
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-semibold text-slate-500 ring-1 ring-slate-200">
+                      {originalIndex + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold ${questionTone.badge}`}>
+                          {questionTone.label}
                         </span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-sm font-medium leading-6 text-slate-900">{result.question_text}</p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-xl font-semibold tabular-nums text-slate-950">{score.toFixed(0)}</p>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400">Average</p>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 border-t border-slate-200 pt-4 sm:grid-cols-3">
-                  {scoreMetrics.map((metric) => {
-                    const metricScore = result[metric.key];
-                    return (
-                      <div key={metric.key}>
-                        <div className="flex items-center justify-between gap-2 text-[11px]">
-                          <span className="truncate text-slate-500" title={metric.label}>
-                            {metric.shortLabel}
+                        {result.is_trait_test && (
+                          <span className="text-[10px] font-medium capitalize text-slate-400">
+                            {formatTraitType(result.trait_type)}
                           </span>
-                          <span className="font-semibold tabular-nums text-slate-800">{metricScore.toFixed(0)}</span>
-                        </div>
-                        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200">
-                          <div
-                            className="h-full rounded-full bg-sky-700"
-                            style={{ width: `${Math.max(0, Math.min(metricScore, 100))}%` }}
-                          />
-                        </div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                      <p className="mt-2 text-sm font-medium leading-6 text-slate-900">{result.question_text}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className={`text-xl font-semibold tabular-nums ${questionTone.value}`}>{score.toFixed(0)}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-slate-400">Average</p>
+                    </div>
+                  </div>
 
-                <p className="mt-4 flex items-center gap-1 border-t border-slate-200 pt-3 text-[11px] text-slate-400">
-                  <Clock3 className="h-3.5 w-3.5" />
-                  Responded in {result.response_time_ms} ms
-                </p>
-              </article>
-            ))}
+                  <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 border-t border-slate-200/80 pt-4 sm:grid-cols-3">
+                    {scoreMetrics.map((metric) => {
+                      const metricScore = result[metric.key];
+                      const metricTone = getPerformanceTone(metricScore);
+                      return (
+                        <div key={metric.key}>
+                          <div className="flex items-center justify-between gap-2 text-[11px]">
+                            <span className="truncate text-slate-500" title={metric.label}>
+                              {metric.shortLabel}
+                            </span>
+                            <span className={`font-semibold tabular-nums ${metricTone.value}`}>
+                              {metricScore.toFixed(0)}
+                            </span>
+                          </div>
+                          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/80 ring-1 ring-slate-200/70">
+                            <div
+                              className={`h-full rounded-full ${metricTone.bar}`}
+                              style={{ width: `${Math.max(0, Math.min(metricScore, 100))}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <p className="mt-4 flex items-center gap-1 border-t border-slate-200/80 pt-3 text-[11px] text-slate-400">
+                    <Clock3 className="h-3.5 w-3.5" />
+                    Responded in {result.response_time_ms} ms
+                  </p>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <p className="mt-5 rounded-xl bg-slate-50 py-10 text-center text-sm text-slate-500">
@@ -520,6 +581,7 @@ export default function EvaluationDetailsModal({
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [activeView, setActiveView] = useState<'results' | 'analytics'>('results');
   const [isQuestionSetOpen, setIsQuestionSetOpen] = useState(false);
+  const [isSystemPromptExpanded, setIsSystemPromptExpanded] = useState(false);
 
   const { data: evaluation, isLoading } = useQuery({
     queryKey: ['evaluation', evaluationId],
@@ -532,6 +594,7 @@ export default function EvaluationDetailsModal({
     setActiveView('results');
     setExpandedRows(new Set());
     setIsQuestionSetOpen(false);
+    setIsSystemPromptExpanded(false);
   }, [evaluationId, isOpen]);
 
   const handleExportJSON = async () => {
@@ -588,6 +651,7 @@ export default function EvaluationDetailsModal({
   const recommendationParts = evaluation?.recommendation?.split(/:\s*/, 2) || [];
   const savedQuestions = evaluation?.results.filter((result) => !result.is_trait_test) || [];
   const behaviorProbes = evaluation?.results.filter((result) => result.is_trait_test) || [];
+  const systemPrompt = evaluation?.prompt_content?.trim() || '';
 
   return (
     <>
@@ -656,6 +720,43 @@ export default function EvaluationDetailsModal({
                   <ExtractMenu onExportJSON={handleExportJSON} onExportCSV={handleExportCSV} />
                 </div>
               </div>
+            </section>
+
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              <button
+                type="button"
+                onClick={() => setIsSystemPromptExpanded((current) => !current)}
+                disabled={!systemPrompt}
+                aria-expanded={isSystemPromptExpanded}
+                aria-controls={systemPrompt ? 'evaluation-system-prompt' : undefined}
+                className="flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-500 disabled:cursor-default disabled:hover:bg-white sm:px-5"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sky-700">
+                  <FileText className="h-4 w-4" strokeWidth={1.8} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-slate-950">System prompt used</span>
+                  <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+                    The behavior reference used to measure prompt adherence in this evaluation.
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-sky-700">
+                  {systemPrompt ? (isSystemPromptExpanded ? 'Hide prompt' : 'View prompt') : 'Not recorded'}
+                  {systemPrompt && (
+                    isSystemPromptExpanded
+                      ? <ChevronUp className="h-4 w-4" />
+                      : <ChevronDown className="h-4 w-4" />
+                  )}
+                </span>
+              </button>
+
+              {isSystemPromptExpanded && systemPrompt && (
+                <div id="evaluation-system-prompt" className="border-t border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+                  <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-slate-200 bg-white p-4 font-mono text-xs leading-6 text-slate-700">
+                    {systemPrompt}
+                  </pre>
+                </div>
+              )}
             </section>
 
             <div className="flex" role="tablist" aria-label="Evaluation view">

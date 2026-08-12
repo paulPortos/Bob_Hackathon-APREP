@@ -28,9 +28,13 @@ export default function Tabs({ tabs, defaultTab, activeTab, onChange }: TabsProp
   };
 
   return (
-    <div className="w-full">
+    <div className="project-workspace w-full min-w-0">
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm shadow-slate-900/[0.03]">
-        <nav className="flex min-w-max gap-1" aria-label="Project sections" role="tablist">
+        <nav
+          className="flex min-w-max gap-1 md:grid md:min-w-0 md:grid-cols-5"
+          aria-label="Project sections"
+          role="tablist"
+        >
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = selectedTab === tab.id;
@@ -44,7 +48,7 @@ export default function Tabs({ tabs, defaultTab, activeTab, onChange }: TabsProp
                 aria-selected={isActive}
                 aria-controls={`${tab.id}-panel`}
                 className={cn(
-                  'inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1',
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1 md:justify-center',
                   isActive
                     ? 'bg-slate-950 text-white shadow-sm'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-950'
@@ -58,13 +62,13 @@ export default function Tabs({ tabs, defaultTab, activeTab, onChange }: TabsProp
         </nav>
       </div>
 
-      <div className="mt-5 sm:mt-6">
+      <div className="mt-5 min-w-0 overflow-x-clip sm:mt-6">
         {tabs.map((tab) => (
           <div
             key={tab.id}
             id={`${tab.id}-panel`}
             role="tabpanel"
-            className={cn(selectedTab === tab.id ? 'block' : 'hidden')}
+            className={cn('min-w-0', selectedTab === tab.id ? 'block' : 'hidden')}
           >
             {tab.content}
           </div>
