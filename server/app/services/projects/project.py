@@ -4,9 +4,10 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundError
+from app.core.config import settings
+from app.core.exceptions import ConflictError, NotFoundError
 from app.core.security import encrypt_token
-from app.models import Project
+from app.models import Project, User
 from app.schemas.projects.project import ProjectCreate, ProjectTokenUpdate, ProjectUpdate
 
 
@@ -15,6 +16,18 @@ class ProjectService:
         self.db = db
 
     def create(self, user_id: str, data: ProjectCreate) -> Project:
+        # Lock the account row so concurrent requests cannot create more than two projects.
+        user = (
+            self.db.query(User).filter(User.id == user_id).with_for_update().first()
+        )
+        if not user:
+            raise NotFoundError("User not found")
+        project_count = self.db.query(Project).filter(Project.user_id == user_id).count()
+        if project_count >= settings.max_projects_per_user:
+            raise ConflictError(
+                "Project limit reached. Delete an existing project before creating another."
+            )
+
         project_id = str(uuid.uuid4())
         project = Project(
             id=project_id,
@@ -25,8 +38,8 @@ class ProjectService:
             encrypted_token=encrypt_token(data.token)
             if data.requires_token and data.token
             else None,
-            request_field_name=data.request_field_name,
-            response_field_name=data.response_field_name,
+            request_body_template=data.request_body_template,
+            response_path=data.response_path,
         )
         self.db.add(project)
         self.db.commit()

@@ -10,7 +10,7 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
     },
   },
 });
@@ -32,12 +32,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       {children}
       <Toaster
-        position="top-right"
+        position="bottom-right"
+        containerStyle={{ bottom: 24, right: 24 }}
         toastOptions={{
-          duration: 5000,
+          duration: 4000,
           style: {
             background: '#fff',
-            color: '#363636',
+            color: '#0f172a',
+            border: '1px solid #e2e8f0',
+            borderRadius: '14px',
+            boxShadow: '0 16px 40px -20px rgba(15, 23, 42, 0.35)',
+            fontSize: '14px',
+            padding: '12px 14px',
           },
           success: {
             iconTheme: {

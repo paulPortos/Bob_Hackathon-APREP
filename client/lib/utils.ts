@@ -96,4 +96,45 @@ export function validateUrl(url: string): boolean {
   }
 }
 
+export function validateHostedEndpointUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return false;
+
+    const hostname = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    if (
+      !hostname ||
+      hostname === 'localhost' ||
+      hostname === '0.0.0.0' ||
+      hostname === '::1' ||
+      hostname.endsWith('.localhost') ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal')
+    ) {
+      return false;
+    }
+
+    const ipv4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4) {
+      const octets = ipv4.slice(1).map(Number);
+      if (octets.some((octet) => octet > 255)) return false;
+      if (
+        octets[0] === 10 ||
+        octets[0] === 127 ||
+        octets[0] === 0 ||
+        (octets[0] === 169 && octets[1] === 254) ||
+        (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+        (octets[0] === 192 && octets[1] === 168)
+      ) {
+        return false;
+      }
+      return true;
+    }
+
+    return hostname.includes('.');
+  } catch {
+    return false;
+  }
+}
+
 // Made with Bob

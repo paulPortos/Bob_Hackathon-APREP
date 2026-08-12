@@ -33,6 +33,7 @@ class ApplicationSettings(BaseSettings):
 
     max_questions_per_slot: int = 10
     max_trait_tests: int = 10
+    max_projects_per_user: int = Field(default=2, ge=1, le=10)
     default_timeout_seconds: int = Field(default=30, ge=1, le=60)
     max_request_body_bytes: int = Field(default=1_048_576, ge=1_024, le=10_485_760)
     max_agent_response_bytes: int = Field(default=524_288, ge=1_024, le=5_242_880)

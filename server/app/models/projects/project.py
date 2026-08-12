@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -18,8 +18,13 @@ class Project(Base):
     endpoint_url = Column(String, nullable=False)
     requires_token = Column(Boolean, default=False)
     encrypted_token = Column(String, nullable=True)
-    request_field_name = Column(String, default="message")
-    response_field_name = Column(String, default="answer")
+    # Keep the existing physical column names so development databases upgrade
+    # without a destructive reset. The application-facing names describe the
+    # flexible contract now stored in them.
+    request_body_template = Column(
+        "request_field_name", Text, nullable=False, default='{\n  "message": "{{message}}"\n}'
+    )
+    response_path = Column("response_field_name", String, nullable=False, default="answer")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

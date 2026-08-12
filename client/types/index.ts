@@ -27,8 +27,8 @@ export interface Project {
   name: string;
   endpoint_url: string;
   requires_token: boolean;
-  request_field_name: string;
-  response_field_name: string;
+  request_body_template: string;
+  response_path: string;
   created_at: string;
   updated_at: string;
 }
@@ -38,16 +38,16 @@ export interface CreateProjectRequest {
   endpoint_url: string;
   requires_token: boolean;
   token?: string;
-  request_field_name: string;
-  response_field_name: string;
+  request_body_template: string;
+  response_path: string;
 }
 
 export interface UpdateProjectRequest {
   name?: string;
   endpoint_url?: string;
   requires_token?: boolean;
-  request_field_name?: string;
-  response_field_name?: string;
+  request_body_template?: string;
+  response_path?: string;
 }
 
 export interface UpdateTokenRequest {

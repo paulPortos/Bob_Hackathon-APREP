@@ -220,6 +220,15 @@ class ScoringService:
         questions = trait_questions.get(trait_type, [])
         return questions[:count]
 
+    def allocate_trait_tests(self, total_count: int) -> dict[str, int]:
+        """Distribute the requested total across the three trait categories exactly."""
+        trait_types = ["security", "honesty", "prompt_adherence"]
+        base_count, remainder = divmod(max(0, total_count), len(trait_types))
+        return {
+            trait_type: base_count + (1 if index < remainder else 0)
+            for index, trait_type in enumerate(trait_types)
+        }
+
 
 # Global instance
 scoring_service = ScoringService()

@@ -1,9 +1,34 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import {
+  ArrowLeft,
+  Bot,
+  Braces,
+  CalendarDays,
+  CircleHelp,
+  Clock3,
+  Edit3,
+  ExternalLink,
+  FileText,
+  FolderOpen,
+  Globe2,
+  History as HistoryIcon,
+  KeyRound,
+  LayoutDashboard,
+  ListChecks,
+  LockKeyhole,
+  Play,
+  Plus,
+  Settings2,
+  Sparkles,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Navbar from '@/components/layout/Navbar';
 import Tabs from '@/components/ui/Tabs';
@@ -14,14 +39,92 @@ import PromptModal from '@/components/project/PromptModal';
 import QuestionSlotModal from '@/components/project/QuestionSlotModal';
 import GenerateQuestionsModal from '@/components/project/GenerateQuestionsModal';
 import EvaluationWizard from '@/components/project/EvaluationWizard';
+import EvaluationTransparency from '@/components/project/EvaluationTransparency';
 import EvaluationDetailsModal from '@/components/project/EvaluationDetailsModal';
 import EditProjectModal from '@/components/project/EditProjectModal';
+import ProjectGuide, {
+  PROJECT_GUIDE_STEPS,
+  type ProjectGuideStep,
+} from '@/components/project/ProjectGuide';
 import { apiClient, getApiErrorMessage } from '@/lib/api';
-import { ChevronRight, Upload, Edit, Trash2, Plus, Sparkles, FolderOpen, History as HistoryIcon, Settings, Play } from 'lucide-react';
-import Link from 'next/link';
-import { QuestionSlot } from '@/types';
+import { formatDate, formatDateTime } from '@/lib/utils';
+import type { QuestionSlot } from '@/types';
 
-// Tab components
+interface SectionHeaderProps {
+  eyebrow: string;
+  title: string;
+  description: string;
+  actions?: ReactNode;
+}
+
+function SectionHeader({ eyebrow, title, description, actions }: SectionHeaderProps) {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">{eyebrow}</p>
+        <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">
+          {title}
+        </h2>
+        <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
+      </div>
+      {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+interface EmptyStateProps {
+  icon: typeof FolderOpen;
+  title: string;
+  description: string;
+  children?: ReactNode;
+}
+
+function EmptyState({ icon: Icon, title, description, children }: EmptyStateProps) {
+  return (
+    <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-sm shadow-slate-900/[0.02] sm:py-16">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-700">
+        <Icon className="h-7 w-7" strokeWidth={1.7} />
+      </div>
+      <h3 className="mt-5 text-lg font-semibold tracking-tight text-slate-950">{title}</h3>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">{description}</p>
+      {children && <div className="mt-6 flex flex-wrap justify-center gap-2">{children}</div>}
+    </div>
+  );
+}
+
+function LoadingBlock() {
+  return (
+    <div className="flex min-h-64 items-center justify-center rounded-3xl border border-slate-200 bg-white">
+      <Spinner className="border-sky-600" />
+    </div>
+  );
+}
+
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: typeof FileText;
+  label: string;
+  value: number;
+  detail: string;
+}) {
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/[0.03]">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-slate-500">{label}</p>
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+          <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
+        </span>
+      </div>
+      <p className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
+      <p className="mt-1 text-xs text-slate-400">{detail}</p>
+    </article>
+  );
+}
+
 function OverviewTab({ projectId }: { projectId: string }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -29,73 +132,121 @@ function OverviewTab({ projectId }: { projectId: string }) {
     queryKey: ['project', projectId],
     queryFn: () => apiClient.getProject(projectId),
   });
-
+  const { data: prompt } = useQuery({
+    queryKey: ['prompt', projectId],
+    queryFn: () => apiClient.getPrompt(projectId),
+    retry: false,
+  });
   const { data: slots } = useQuery({
     queryKey: ['question-slots', projectId],
     queryFn: () => apiClient.getQuestionSlots(projectId),
   });
-
   const { data: evaluations } = useQuery({
     queryKey: ['evaluations', projectId],
     queryFn: () => apiClient.getEvaluations(projectId),
   });
 
-  if (!project) return <Spinner />;
+  if (!project) return <LoadingBlock />;
+
+  const questionCount = slots?.reduce((total, slot) => total + slot.questions.length, 0) ?? 0;
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex justify-between items-start mb-4">
-          <h3 className="text-lg font-semibold">Project Information</h3>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard
+          icon={FileText}
+          label="Agent prompt"
+          value={prompt?.content?.trim() ? 1 : 0}
+          detail={prompt?.content?.trim() ? 'Ready for evaluation' : 'Not added yet'}
+        />
+        <MetricCard
+          icon={ListChecks}
+          label="Test questions"
+          value={questionCount}
+          detail={`${slots?.length ?? 0} question ${(slots?.length ?? 0) === 1 ? 'slot' : 'slots'}`}
+        />
+        <MetricCard
+          icon={HistoryIcon}
+          label="Evaluations"
+          value={evaluations?.length ?? 0}
+          detail="Runs saved to history"
+        />
+      </div>
+
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-900/[0.03]">
+        <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Connection</p>
+            <h3 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Agent API contract</h3>
+          </div>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => setIsEditModalOpen(true)}
+            className="rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
           >
-            <Settings className="h-4 w-4 mr-1" />
-            Edit
+            <Settings2 className="mr-1.5 h-4 w-4" strokeWidth={1.8} />
+            Edit configuration
           </Button>
         </div>
-        <dl className="grid grid-cols-1 gap-4">
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Name</dt>
-            <dd className="mt-1 text-sm text-gray-900">{project.name}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Endpoint URL</dt>
-            <dd className="mt-1 text-sm text-gray-900">{project.endpoint_url}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Requires Token</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {project.requires_token ? 'Yes' : 'No'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Request Field</dt>
-            <dd className="mt-1 text-sm text-gray-900">{project.request_field_name}</dd>
-          </div>
-          <div>
-            <dt className="text-sm font-medium text-gray-500">Response Field</dt>
-            <dd className="mt-1 text-sm text-gray-900">{project.response_field_name}</dd>
-          </div>
-        </dl>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="text-3xl font-bold text-primary-600">1</div>
-          <div className="text-sm text-gray-500 mt-1">Total Prompts</div>
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
+          <div className="space-y-5 px-5 py-6 sm:px-6 lg:border-r lg:border-slate-100">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Endpoint</p>
+              <a
+                href={project.endpoint_url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-white"
+              >
+                <Globe2 className="h-4 w-4 shrink-0 text-sky-700" strokeWidth={1.8} />
+                <span className="truncate">{project.endpoint_url}</span>
+                <ExternalLink className="ml-auto h-4 w-4 shrink-0 text-slate-400" strokeWidth={1.8} />
+              </a>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 px-4 py-3.5">
+                <p className="text-xs font-medium text-slate-400">Authentication</p>
+                <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  {project.requires_token ? (
+                    <LockKeyhole className="h-4 w-4 text-amber-600" strokeWidth={1.8} />
+                  ) : (
+                    <Globe2 className="h-4 w-4 text-emerald-600" strokeWidth={1.8} />
+                  )}
+                  {project.requires_token ? 'Bearer token' : 'No token'}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 px-4 py-3.5">
+                <p className="text-xs font-medium text-slate-400">Created</p>
+                <p className="mt-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <CalendarDays className="h-4 w-4 text-sky-700" strokeWidth={1.8} />
+                  {formatDate(project.created_at)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-5 bg-slate-50/60 px-5 py-6 sm:px-6">
+            <div>
+              <div className="flex items-center gap-2">
+                <Braces className="h-4 w-4 text-slate-500" strokeWidth={1.8} />
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Request template</p>
+              </div>
+              <pre className="mt-2 max-h-52 overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-5 text-cyan-100 shadow-inner">
+                <code>{project.request_body_template}</code>
+              </pre>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Answer path</p>
+              <code className="mt-2 block overflow-x-auto rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-xs font-medium text-slate-700">
+                {project.response_path}
+              </code>
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="text-3xl font-bold text-primary-600">{slots?.length || 0}</div>
-          <div className="text-sm text-gray-500 mt-1">Question Slots</div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="text-3xl font-bold text-primary-600">{evaluations?.length || 0}</div>
-          <div className="text-sm text-gray-500 mt-1">Evaluations</div>
-        </div>
-      </div>
+      </section>
 
       <EditProjectModal
         isOpen={isEditModalOpen}
@@ -121,88 +272,94 @@ function PromptsTab({ projectId }: { projectId: string }) {
     mutationFn: () => apiClient.createOrUpdatePrompt(projectId, { content: '', file_type: 'txt' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prompt', projectId] });
-      toast.success('Prompt deleted successfully!');
+      toast.success('Prompt removed');
       setIsDeleteDialogOpen(false);
     },
-    onError: (error) => {
-      toast.error(getApiErrorMessage(error, 'Failed to delete prompt'));
-    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to remove prompt')),
   });
 
   return (
     <div className="space-y-6">
-      {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="text-sm font-semibold text-blue-900 mb-2">About Agent Prompts</h4>
-        <p className="text-sm text-blue-800">
-          This prompt is used <strong>by your AI agent</strong> to guide its behavior and responses.
-          The evaluator will analyze how well your agent follows this prompt during evaluations.
-          Storing prompts here helps you track your agent's behavior over time as you improve it.
-        </p>
-      </div>
-      {isLoading ? (
-        <Spinner />
-      ) : prompt ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="text-lg font-semibold">Current Prompt</h3>
-            <div className="flex gap-2">
+      <SectionHeader
+        eyebrow="Behavior reference"
+        title="Agent prompt"
+        description="Save the instructions your agent should follow so evaluations can measure prompt adherence."
+        actions={
+          prompt?.content?.trim() ? (
+            <>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => setIsModalOpen(true)}
+                className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50"
               >
-                <Edit className="h-4 w-4 mr-1" />
+                <Edit3 className="mr-1.5 h-4 w-4" strokeWidth={1.8} />
                 Edit
               </Button>
               <Button
-                variant="danger"
+                variant="ghost"
                 size="sm"
                 onClick={() => setIsDeleteDialogOpen(true)}
+                className="rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
               >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
+                <Trash2 className="mr-1.5 h-4 w-4" strokeWidth={1.8} />
+                Remove
               </Button>
+            </>
+          ) : undefined
+        }
+      />
+
+      {isLoading ? (
+        <LoadingBlock />
+      ) : prompt?.content?.trim() ? (
+        <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-900/[0.03]">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+              <FileText className="h-4 w-4 text-sky-700" strokeWidth={1.8} />
+              Current prompt
             </div>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium uppercase text-slate-500">
+              {prompt.file_type}
+            </span>
           </div>
-          <div className="bg-gray-50 rounded p-4">
-            <pre className="text-sm text-gray-900 whitespace-pre-wrap font-mono">
-              {prompt.content}
-            </pre>
+          <pre className="max-h-[560px] overflow-auto whitespace-pre-wrap break-words px-5 py-6 font-mono text-sm leading-7 text-slate-700 sm:px-6">
+            {prompt.content}
+          </pre>
+          <div className="border-t border-slate-100 px-5 py-3 text-xs text-slate-400 sm:px-6">
+            Added {formatDate(prompt.created_at)}
           </div>
-          <div className="mt-4 text-sm text-gray-500">
-            Type: {prompt.file_type} • Created: {new Date(prompt.created_at).toLocaleDateString()}
-          </div>
-        </div>
+        </article>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-          <Upload className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <p className="text-gray-500 mb-2">No prompt uploaded yet</p>
-          <p className="text-sm text-gray-400 mb-6">Upload a prompt to get started</p>
-          <Button onClick={() => setIsModalOpen(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Prompt
+        <EmptyState
+          icon={Upload}
+          title="No agent prompt yet"
+          description="Add the behavior instructions used by your agent to make prompt-adherence scoring more meaningful."
+        >
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="rounded-xl bg-slate-950 hover:bg-slate-800 focus:ring-slate-500"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add prompt
           </Button>
-        </div>
+        </EmptyState>
       )}
 
       <PromptModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         projectId={projectId}
-        existingPrompt={prompt}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['prompt', projectId] });
-        }}
+        existingPrompt={prompt?.content?.trim() ? prompt : null}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['prompt', projectId] })}
       />
-
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         onConfirm={() => deleteMutation.mutate()}
-        title="Delete Prompt"
-        message="Are you sure you want to delete this prompt? This action cannot be undone."
-        confirmText="Delete"
+        title="Remove prompt"
+        message="Remove this prompt from the project? This cannot be undone."
+        confirmText="Remove"
         variant="danger"
         isLoading={deleteMutation.isPending}
       />
@@ -226,111 +383,125 @@ function QuestionSlotsTab({ projectId }: { projectId: string }) {
     mutationFn: (slotId: string) => apiClient.deleteQuestionSlot(slotId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['question-slots', projectId] });
-      toast.success('Question slot deleted successfully!');
+      toast.success('Question slot deleted');
       setSlotToDelete(null);
     },
-    onError: (error) => {
-      toast.error(getApiErrorMessage(error, 'Failed to delete question slot'));
-    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Failed to delete question slot')),
   });
+
+  const actions = (
+    <>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => setIsManualModalOpen(true)}
+        className="rounded-xl border border-slate-200 bg-white hover:bg-slate-50"
+      >
+        <Plus className="mr-1.5 h-4 w-4" />
+        New slot
+      </Button>
+      <Button
+        size="sm"
+        onClick={() => setIsGenerateModalOpen(true)}
+        className="rounded-xl bg-slate-950 hover:bg-slate-800 focus:ring-slate-500"
+      >
+        <Sparkles className="mr-1.5 h-4 w-4" />
+        Generate questions
+      </Button>
+    </>
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end gap-3">
-        <Button
-          variant="secondary"
-          onClick={() => setIsManualModalOpen(true)}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Create Manual Slot
-        </Button>
-        <Button onClick={() => setIsGenerateModalOpen(true)}>
-          <Sparkles className="h-4 w-4 mr-2" />
-          Auto-Generate Questions
-        </Button>
-      </div>
+      <SectionHeader
+        eyebrow="Test library"
+        title="Question slots"
+        description="Group related questions into reusable sets for focused, repeatable evaluations."
+        actions={actions}
+      />
 
       {isLoading ? (
-        <Spinner />
-      ) : slots && slots.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4">
+        <LoadingBlock />
+      ) : slots?.length ? (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {slots.map((slot) => (
-            <div key={slot.id} className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold">{slot.name}</h3>
-                  {slot.description && (
-                    <p className="text-sm text-gray-600 mt-1">{slot.description}</p>
-                  )}
-                  <div className="mt-4 flex items-center gap-3 text-sm text-gray-500">
-                    <span>{slot.questions.length} questions</span>
+            <article
+              key={slot.id}
+              className="group flex flex-col rounded-3xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-900/[0.03] transition hover:border-slate-300 hover:shadow-md sm:p-5"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-lg font-semibold tracking-tight text-slate-950">
+                      {slot.name}
+                    </h3>
                     {slot.is_auto_generated && (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                        AI Generated
+                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-semibold text-violet-700">
+                        <Sparkles className="h-3 w-3" />
+                        Generated
                       </span>
                     )}
                   </div>
+                  {slot.description && (
+                    <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-500">{slot.description}</p>
+                  )}
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setSlotToEdit(slot)}
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => setSlotToDelete(slot)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
+                <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                  {slot.questions.length} {slot.questions.length === 1 ? 'question' : 'questions'}
+                </span>
               </div>
 
-              {/* Show questions preview */}
-              {slot.questions.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <p className="text-xs font-medium text-gray-500 mb-2">Questions:</p>
-                  <div className="space-y-2">
-                    {slot.questions.slice(0, 3).map((q, idx) => (
-                      <div key={q.id} className="text-sm text-gray-700">
-                        {idx + 1}. {q.question_text}
-                      </div>
+              <div className="mt-4 flex-1 rounded-2xl bg-slate-50 p-3">
+                {slot.questions.length ? (
+                  <ol className="space-y-2">
+                    {slot.questions.slice(0, 3).map((question, index) => (
+                      <li key={question.id} className="flex gap-3 text-sm leading-5 text-slate-600">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white text-[10px] font-semibold text-slate-400 shadow-sm">
+                          {index + 1}
+                        </span>
+                        <span className="line-clamp-2">{question.question_text}</span>
+                      </li>
                     ))}
                     {slot.questions.length > 3 && (
-                      <p className="text-xs text-gray-500">
-                        +{slot.questions.length - 3} more questions
-                      </p>
+                      <li className="pl-8 text-xs font-medium text-slate-400">
+                        {slot.questions.length - 3} more
+                      </li>
                     )}
-                  </div>
-                </div>
-              )}
-            </div>
+                  </ol>
+                ) : (
+                  <p className="text-sm text-slate-400">No questions in this slot.</p>
+                )}
+              </div>
+
+              <div className="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSlotToEdit(slot)}
+                  className="rounded-xl text-slate-600 hover:bg-slate-100"
+                >
+                  <Edit3 className="mr-1.5 h-4 w-4" strokeWidth={1.8} />
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSlotToDelete(slot)}
+                  className="rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
+                >
+                  <Trash2 className="mr-1.5 h-4 w-4" strokeWidth={1.8} />
+                  Delete
+                </Button>
+              </div>
+            </article>
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-          <FolderOpen className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <p className="text-gray-500 mb-2">No question slots yet</p>
-          <p className="text-sm text-gray-400 mb-6">Create a slot to add questions</p>
-          <div className="flex justify-center gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => setIsManualModalOpen(true)}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Manual Slot
-            </Button>
-            <Button onClick={() => setIsGenerateModalOpen(true)}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Auto-Generate Questions
-            </Button>
-          </div>
-        </div>
+        <EmptyState
+          icon={FolderOpen}
+          title="Build your first question set"
+          description="Use the actions above to create questions manually or generate a starting set."
+        />
       )}
 
       <QuestionSlotModal
@@ -341,26 +512,20 @@ function QuestionSlotsTab({ projectId }: { projectId: string }) {
         }}
         projectId={projectId}
         existingSlot={slotToEdit}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['question-slots', projectId] });
-        }}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['question-slots', projectId] })}
       />
-
       <GenerateQuestionsModal
         isOpen={isGenerateModalOpen}
         onClose={() => setIsGenerateModalOpen(false)}
         projectId={projectId}
-        onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['question-slots', projectId] });
-        }}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['question-slots', projectId] })}
       />
-
       <ConfirmDialog
         isOpen={!!slotToDelete}
         onClose={() => setSlotToDelete(null)}
         onConfirm={() => slotToDelete && deleteMutation.mutate(slotToDelete.id)}
-        title="Delete Question Slot"
-        message={`Are you sure you want to delete "${slotToDelete?.name}"? This action cannot be undone.`}
+        title="Delete question slot"
+        message={`Delete “${slotToDelete?.name}” and its questions? This cannot be undone.`}
         confirmText="Delete"
         variant="danger"
         isLoading={deleteMutation.isPending}
@@ -369,27 +534,61 @@ function QuestionSlotsTab({ projectId }: { projectId: string }) {
   );
 }
 
-function EvaluationTab({ projectId }: { projectId: string }) {
+function EvaluationTab({
+  projectId,
+  onEvaluationComplete,
+}: {
+  projectId: string;
+  onEvaluationComplete: () => void;
+}) {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const queryClient = useQueryClient();
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-        <div className="max-w-md mx-auto">
-          <div className="bg-primary-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-            <Play className="h-10 w-10 text-primary-600" />
+      <SectionHeader
+        eyebrow="Evaluation run"
+        title="Test your agent"
+        description="Choose a question set and score the agent across accuracy, safety, honesty, speed, and prompt adherence."
+      />
+
+      <section className="relative overflow-hidden rounded-3xl bg-slate-950 px-6 py-9 text-white shadow-xl shadow-slate-950/10 sm:px-9 sm:py-11">
+        <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-sky-500/15 blur-3xl" />
+        <div className="absolute -bottom-32 left-1/3 h-64 w-64 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="relative grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="max-w-2xl">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-sky-300">
+              <Play className="h-5 w-5 fill-current" />
+            </div>
+            <h3 className="mt-5 text-2xl font-semibold tracking-tight sm:text-3xl">Run a reviewable evaluation</h3>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
+              Choose the test set and optional trait probes. APREP records each answer, score, timing, and explanation so the final result can be inspected.
+            </p>
+            <Button
+              size="lg"
+              onClick={() => setIsWizardOpen(true)}
+              className="mt-7 rounded-xl bg-white px-5 text-base text-slate-950 hover:bg-slate-100 focus:ring-white"
+            >
+              <Play className="mr-2 h-4 w-4 fill-current" />
+              Configure evaluation
+            </Button>
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Run Evaluation</h3>
-          <p className="text-gray-600 mb-6">
-            Test your AI agent against your question slots and evaluate its performance across multiple traits.
-          </p>
-          <Button size="lg" onClick={() => setIsWizardOpen(true)}>
-            <Play className="h-5 w-5 mr-2" />
-            Start Evaluation Wizard
-          </Button>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-300">Every run records</p>
+            <ul className="mt-4 space-y-3 text-sm text-slate-200">
+              {['Question and final answer', 'Endpoint response time', 'Six individual scores', 'Per-response explanation'].map((item) => (
+                <li key={item} className="flex items-center gap-2.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
-      </div>
+      </section>
+
+      <EvaluationTransparency />
 
       <EvaluationWizard
         isOpen={isWizardOpen}
@@ -397,6 +596,7 @@ function EvaluationTab({ projectId }: { projectId: string }) {
         projectId={projectId}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['evaluations', projectId] });
+          onEvaluationComplete();
         }}
       />
     </div>
@@ -405,74 +605,82 @@ function EvaluationTab({ projectId }: { projectId: string }) {
 
 function HistoryTab({ projectId }: { projectId: string }) {
   const [selectedEvaluationId, setSelectedEvaluationId] = useState<string | null>(null);
-
   const { data: evaluations, isLoading } = useQuery({
     queryKey: ['evaluations', projectId],
     queryFn: () => apiClient.getEvaluations(projectId),
   });
 
+  const statusStyles = {
+    completed: 'bg-emerald-50 text-emerald-700 ring-emerald-600/10',
+    running: 'bg-sky-50 text-sky-700 ring-sky-600/10',
+    failed: 'bg-red-50 text-red-700 ring-red-600/10',
+  };
+
   return (
     <div className="space-y-6">
+      <SectionHeader
+        eyebrow="Past performance"
+        title="Evaluation history"
+        description="Review scores and open the full breakdown from each completed run."
+      />
+
       {isLoading ? (
-        <Spinner />
-      ) : evaluations && evaluations.length > 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Started At
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Score
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {evaluations.map((evaluation) => (
-                <tr key={evaluation.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(evaluation.started_at).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded ${
-                      evaluation.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      evaluation.status === 'running' ? 'bg-blue-100 text-blue-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {evaluation.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {evaluation.overall_score?.toFixed(1) || '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setSelectedEvaluationId(evaluation.id)}
-                      disabled={evaluation.status !== 'completed'}
-                    >
-                      View Details
-                    </Button>
-                  </td>
+        <LoadingBlock />
+      ) : evaluations?.length ? (
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-900/[0.03]">
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="border-b border-slate-200 bg-slate-50/80">
+                <tr>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 sm:px-6">Started</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Status</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">Score</th>
+                  <th className="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-400 sm:px-6">Details</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {evaluations.map((evaluation) => (
+                  <tr key={evaluation.id} className="transition-colors hover:bg-slate-50/70">
+                    <td className="whitespace-nowrap px-5 py-4 text-sm font-medium text-slate-700 sm:px-6">
+                      <span className="flex items-center gap-2">
+                        <Clock3 className="h-4 w-4 text-slate-400" strokeWidth={1.8} />
+                        {formatDateTime(evaluation.started_at)}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ring-inset ${statusStyles[evaluation.status]}`}>
+                        {evaluation.status}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4">
+                      <span className="text-sm font-semibold tabular-nums text-slate-900">
+                        {evaluation.overall_score == null ? '—' : evaluation.overall_score.toFixed(1)}
+                      </span>
+                      {evaluation.overall_score != null && <span className="text-xs text-slate-400"> / 100</span>}
+                    </td>
+                    <td className="whitespace-nowrap px-5 py-4 text-right sm:px-6">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedEvaluationId(evaluation.id)}
+                        disabled={evaluation.status !== 'completed'}
+                        className="rounded-xl text-slate-700 hover:bg-slate-100"
+                      >
+                        View report
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-          <HistoryIcon className="mx-auto h-16 w-16 text-gray-400 mb-4" />
-          <p className="text-gray-500 mb-2">No evaluations yet</p>
-          <p className="text-sm text-gray-400">Run an evaluation to see results</p>
-        </div>
+        <EmptyState
+          icon={HistoryIcon}
+          title="No evaluations yet"
+          description="Completed runs will appear here with their score, status, and full report."
+        />
       )}
 
       <EvaluationDetailsModal
@@ -484,58 +692,161 @@ function HistoryTab({ projectId }: { projectId: string }) {
   );
 }
 
+function getEndpointHost(endpointUrl: string) {
+  try {
+    return new URL(endpointUrl).host;
+  } catch {
+    return endpointUrl;
+  }
+}
+
 export default function ProjectPage() {
   const params = useParams();
   const projectId = params.id as string;
-
-  const { data: project, isLoading } = useQuery({
+  const [activeTab, setActiveTab] = useState<ProjectGuideStep>('overview');
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [guideStepIndex, setGuideStepIndex] = useState(0);
+  const { data: project, isLoading, isError } = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => apiClient.getProject(projectId),
   });
 
   const tabs = [
-    { id: 'overview', label: 'Overview', content: <OverviewTab projectId={projectId} /> },
-    { id: 'prompts', label: 'Prompts', content: <PromptsTab projectId={projectId} /> },
-    { id: 'slots', label: 'Question Slots', content: <QuestionSlotsTab projectId={projectId} /> },
-    { id: 'evaluate', label: 'Run Evaluation', content: <EvaluationTab projectId={projectId} /> },
-    { id: 'history', label: 'History', content: <HistoryTab projectId={projectId} /> },
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard, content: <OverviewTab projectId={projectId} /> },
+    { id: 'prompts', label: 'Prompt', icon: FileText, content: <PromptsTab projectId={projectId} /> },
+    { id: 'slots', label: 'Questions', icon: ListChecks, content: <QuestionSlotsTab projectId={projectId} /> },
+    {
+      id: 'evaluate',
+      label: 'Evaluate',
+      icon: Play,
+      content: (
+        <EvaluationTab
+          projectId={projectId}
+          onEvaluationComplete={() => setActiveTab('history')}
+        />
+      ),
+    },
+    { id: 'history', label: 'History', icon: HistoryIcon, content: <HistoryTab projectId={projectId} /> },
   ];
+
+  const handleGuideStepChange = (index: number) => {
+    const nextStep = PROJECT_GUIDE_STEPS[index];
+    if (!nextStep) return;
+    setGuideStepIndex(index);
+    setActiveTab(nextStep.id);
+  };
+
+  const handleTabChange = (tabId: string) => {
+    const nextTab = tabId as ProjectGuideStep;
+    setActiveTab(nextTab);
+    if (isGuideOpen) {
+      const nextIndex = PROJECT_GUIDE_STEPS.findIndex((step) => step.id === nextTab);
+      if (nextIndex >= 0) setGuideStepIndex(nextIndex);
+    }
+  };
+
+  const openGuide = () => {
+    setIsGuideOpen(true);
+    handleGuideStepChange(0);
+  };
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-slate-50/70">
         <Navbar />
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Breadcrumb */}
-          <div className="flex items-center text-sm text-gray-500 mb-6">
-            <Link href="/home" className="hover:text-gray-700">Home</Link>
-            <ChevronRight className="h-4 w-4 mx-2" />
-            <span className="text-gray-900">{project?.name || 'Project'}</span>
-          </div>
+        <main className="mx-auto max-w-[1400px] px-4 py-7 sm:px-6 sm:py-9 lg:px-12">
+          <Link
+            href="/home"
+            className="inline-flex items-center gap-1.5 rounded-lg text-sm font-medium text-slate-500 transition hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
+          >
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.8} />
+            All projects
+          </Link>
 
-          {/* Header */}
           {isLoading ? (
-            <Spinner />
-          ) : project ? (
+            <div className="mt-6 animate-pulse">
+              <div className="h-5 w-32 rounded bg-slate-200" />
+              <div className="mt-4 h-10 w-80 max-w-full rounded-lg bg-slate-200" />
+              <div className="mt-3 h-5 w-56 rounded bg-slate-200" />
+              <div className="mt-8 h-14 rounded-2xl border border-slate-200 bg-white" />
+              <div className="mt-6 h-72 rounded-3xl border border-slate-200 bg-white" />
+            </div>
+          ) : project && !isError ? (
             <>
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-                <p className="text-gray-600 mt-2">{project.endpoint_url}</p>
-              </div>
+              <header className="mb-7 mt-5 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm shadow-slate-900/[0.03]">
+                <div className="relative px-5 py-6 sm:px-7 sm:py-7">
+                  <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-sky-100/70 blur-3xl" />
+                  <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sky-300 shadow-lg shadow-slate-900/10">
+                      <Bot className="h-7 w-7" strokeWidth={1.7} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Agent project</p>
+                      </div>
+                      <h1 className="mt-1.5 truncate text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
+                        {project.name}
+                      </h1>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <Globe2 className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+                          <span className="truncate">{getEndpointHost(project.endpoint_url)}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          {project.requires_token ? (
+                            <KeyRound className="h-4 w-4" strokeWidth={1.8} />
+                          ) : (
+                            <Globe2 className="h-4 w-4" strokeWidth={1.8} />
+                          )}
+                          {project.requires_token ? 'Protected endpoint' : 'Public endpoint'}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={openGuide}
+                      className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 sm:self-center"
+                      aria-label="Open project guide"
+                    >
+                      <CircleHelp className="h-4 w-4 text-sky-700" strokeWidth={1.8} />
+                      Guide
+                    </button>
+                  </div>
+                </div>
+              </header>
 
-              {/* Tabs */}
-              <Tabs tabs={tabs} defaultTab="overview" />
+              <Tabs
+                tabs={tabs}
+                defaultTab="overview"
+                activeTab={activeTab}
+                onChange={handleTabChange}
+              />
             </>
           ) : (
-            <div className="text-center py-20">
-              <p className="text-gray-500">Project not found</p>
+            <div className="mt-6 rounded-3xl border border-slate-200 bg-white px-6 py-20 text-center shadow-sm">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+                <Bot className="h-7 w-7" strokeWidth={1.7} />
+              </div>
+              <h1 className="mt-5 text-xl font-semibold text-slate-950">Project not found</h1>
+              <p className="mt-2 text-sm text-slate-500">It may have been deleted or you may not have access.</p>
+              <Link
+                href="/home"
+                className="mt-6 inline-flex items-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                Return to projects
+              </Link>
             </div>
           )}
         </main>
+
+        <ProjectGuide
+          isOpen={isGuideOpen}
+          stepIndex={guideStepIndex}
+          onStepChange={handleGuideStepChange}
+          onClose={() => setIsGuideOpen(false)}
+        />
       </div>
     </ProtectedRoute>
   );
 }
-
-// Made with Bob

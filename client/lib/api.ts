@@ -23,6 +23,10 @@ import type {
 
 export function getApiErrorMessage(error: unknown, fallback = 'Request failed'): string {
   if (axios.isAxiosError(error)) {
+    if (!error.response) {
+      return `Cannot connect to the APREP API at ${API_BASE_URL}. Check that the server is running and allows this client origin.`;
+    }
+
     const detail = error.response?.data?.detail;
 
     if (typeof detail === 'string') {
@@ -117,6 +121,11 @@ class ApiClient {
 
   async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await this.client.post<AuthResponse>('/auth/login', data);
+    return response.data;
+  }
+
+  async getCurrentUser(): Promise<User> {
+    const response = await this.client.get<User>('/auth/me');
     return response.data;
   }
 

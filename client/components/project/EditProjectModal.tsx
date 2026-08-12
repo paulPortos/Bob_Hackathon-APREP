@@ -7,6 +7,10 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { apiClient, getApiErrorMessage } from '@/lib/api';
+import {
+  getRequestTemplateError,
+  SIMPLE_REQUEST_TEMPLATE,
+} from '@/lib/agentContract';
 import { Project, UpdateProjectRequest } from '@/types';
 import { Key } from 'lucide-react';
 
@@ -24,8 +28,8 @@ export default function EditProjectModal({
   const [name, setName] = useState('');
   const [endpointUrl, setEndpointUrl] = useState('');
   const [requiresToken, setRequiresToken] = useState(false);
-  const [requestFieldName, setRequestFieldName] = useState('message');
-  const [responseFieldName, setResponseFieldName] = useState('answer');
+  const [requestBodyTemplate, setRequestBodyTemplate] = useState(SIMPLE_REQUEST_TEMPLATE);
+  const [responsePath, setResponsePath] = useState('answer');
   const [showTokenField, setShowTokenField] = useState(false);
   const [token, setToken] = useState('');
   const queryClient = useQueryClient();
@@ -35,8 +39,8 @@ export default function EditProjectModal({
       setName(project.name);
       setEndpointUrl(project.endpoint_url);
       setRequiresToken(project.requires_token);
-      setRequestFieldName(project.request_field_name);
-      setResponseFieldName(project.response_field_name);
+      setRequestBodyTemplate(project.request_body_template);
+      setResponsePath(project.response_path);
     }
   }, [project, isOpen]);
 
@@ -86,12 +90,23 @@ export default function EditProjectModal({
       return;
     }
 
+    const templateError = getRequestTemplateError(requestBodyTemplate);
+    if (templateError) {
+      toast.error(templateError);
+      return;
+    }
+
+    if (!responsePath.trim()) {
+      toast.error('Answer path is required');
+      return;
+    }
+
     mutation.mutate({
       name: name.trim(),
       endpoint_url: endpointUrl.trim(),
       requires_token: requiresToken,
-      request_field_name: requestFieldName.trim(),
-      response_field_name: responseFieldName.trim(),
+      request_body_template: requestBodyTemplate.trim(),
+      response_path: responsePath.trim(),
     });
   };
 
@@ -192,19 +207,27 @@ export default function EditProjectModal({
           </div>
         )}
 
-        <Input
-          label="Request Field Name"
-          value={requestFieldName}
-          onChange={(e) => setRequestFieldName(e.target.value)}
-          placeholder="message"
-          required
-        />
+        <div>
+          <label htmlFor="edit-request-template" className="mb-1.5 block text-sm font-medium text-gray-700">
+            Request JSON template
+          </label>
+          <textarea
+            id="edit-request-template"
+            rows={7}
+            value={requestBodyTemplate}
+            onChange={(event) => setRequestBodyTemplate(event.target.value)}
+            className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-3 font-mono text-xs leading-5 text-cyan-100 outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-100"
+            spellCheck={false}
+            required
+          />
+          <p className="mt-1 text-xs text-gray-500">Use {'{{message}}'} where APREP should insert each question.</p>
+        </div>
 
         <Input
-          label="Response Field Name"
-          value={responseFieldName}
-          onChange={(e) => setResponseFieldName(e.target.value)}
-          placeholder="answer"
+          label="Answer Path"
+          value={responsePath}
+          onChange={(e) => setResponsePath(e.target.value)}
+          placeholder="data.results[0].answer"
           required
         />
 

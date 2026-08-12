@@ -1,90 +1,81 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import Card from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import Link from 'next/link';
 import { Project } from '@/types';
-import { formatDate, truncate } from '@/lib/utils';
-import { ExternalLink, Settings, Trash2, Calendar } from 'lucide-react';
+import { formatDate } from '@/lib/utils';
+import {
+  ArrowUpRight,
+  CalendarDays,
+  Globe2,
+  LockKeyhole,
+  Trash2,
+  Webhook,
+} from 'lucide-react';
 
 interface ProjectCardProps {
   project: Project;
   onDelete: (project: Project) => void;
+  onOpen?: (project: Project) => void;
 }
 
-export default function ProjectCard({ project, onDelete }: ProjectCardProps) {
-  const router = useRouter();
-
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on buttons
-    if ((e.target as HTMLElement).closest('button')) {
-      return;
-    }
-    router.push(`/project/${project.id}`);
-  };
-
+export default function ProjectCard({ project, onDelete, onOpen }: ProjectCardProps) {
   return (
-    <Card hover onClick={handleCardClick} className="p-8 h-full flex flex-col">
-      <div className="space-y-5 flex-1 flex flex-col">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-xl font-bold text-gray-900 mb-2 truncate">
-              {project.name}
-            </h3>
-            <div className="flex items-center text-sm text-gray-500">
-              <ExternalLink className="h-4 w-4 mr-2 flex-shrink-0" />
-              <span className="truncate">{truncate(project.endpoint_url, 45)}</span>
-            </div>
-          </div>
+    <article
+      className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5"
+      data-tour-project-id={project.id}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
+          <Webhook className="h-5 w-5" strokeWidth={1.8} />
         </div>
-
-        {/* Metadata */}
-        <div className="flex items-center text-sm text-gray-500">
-          <Calendar className="h-4 w-4 mr-2" />
-          <span>Created {formatDate(project.created_at)}</span>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-6 py-6 border-y border-gray-200 flex-1">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-primary-600 mb-1">-</div>
-            <div className="text-sm text-gray-500 font-medium">Prompts</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-primary-600 mb-1">-</div>
-            <div className="text-sm text-gray-500 font-medium">Slots</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-primary-600 mb-1">-</div>
-            <div className="text-sm text-gray-500 font-medium">Evaluations</div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex space-x-3 pt-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            className="flex-1"
-            onClick={() => router.push(`/project/${project.id}`)}
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            View
-          </Button>
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(project);
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <button
+          type="button"
+          onClick={() => onDelete(project)}
+          className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-200"
+          aria-label={`Delete ${project.name}`}
+          title="Delete project"
+        >
+          <Trash2 className="h-4 w-4" strokeWidth={1.8} />
+        </button>
       </div>
-    </Card>
+
+      <Link
+        href={`/project/${project.id}`}
+        className="mt-5 flex flex-1 flex-col rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-4"
+        data-tour="open-project"
+        onClick={() => onOpen?.(project)}
+      >
+        <h2 className="truncate text-lg font-semibold tracking-tight text-slate-950">
+          {project.name}
+        </h2>
+        <div className="mt-2 flex min-w-0 items-center gap-2 text-sm text-slate-500">
+          <Globe2 className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+          <span className="truncate" title={project.endpoint_url}>{project.endpoint_url}</span>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+            {project.requires_token ? (
+              <LockKeyhole className="h-3.5 w-3.5" strokeWidth={1.8} />
+            ) : (
+              <Globe2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+            )}
+            {project.requires_token ? 'Protected endpoint' : 'Public endpoint'}
+          </span>
+        </div>
+
+        <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-5 text-sm">
+          <span className="flex items-center gap-1.5 text-slate-500">
+            <CalendarDays className="h-4 w-4" strokeWidth={1.8} />
+            {formatDate(project.created_at)}
+          </span>
+          <span className="flex items-center gap-1 font-medium text-slate-900 transition-colors group-hover:text-sky-700">
+            Open
+            <ArrowUpRight className="h-4 w-4" strokeWidth={1.8} />
+          </span>
+        </div>
+      </Link>
+    </article>
   );
 }
 

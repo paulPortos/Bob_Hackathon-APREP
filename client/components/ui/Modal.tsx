@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useId } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,7 @@ export default function Modal({
   size = 'md',
   showCloseButton = true,
 }: ModalProps) {
+  const titleId = useId();
   const sizes = {
     sm: 'max-w-md',
     md: 'max-w-lg',
@@ -29,6 +30,23 @@ export default function Modal({
     xl: 'max-w-4xl',
     full: 'max-w-7xl',
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   return (
     <AnimatePresence>
@@ -41,32 +59,36 @@ export default function Modal({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={onClose}
-              className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+              className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm transition-opacity"
+              aria-hidden="true"
             />
 
-            {/* Modal */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                'relative bg-white rounded-lg shadow-xl w-full',
+                'relative w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/20',
                 sizes[size]
               )}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={title ? titleId : undefined}
             >
-              {/* Header */}
               {(title || showCloseButton) && (
-                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
                   {title && (
-                    <h2 className="text-xl font-semibold text-gray-900">
+                    <h2 id={titleId} className="text-lg font-semibold tracking-tight text-slate-950">
                       {title}
                     </h2>
                   )}
                   {showCloseButton && (
                     <button
+                      type="button"
                       onClick={onClose}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                      className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                      aria-label="Close dialog"
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -74,7 +96,6 @@ export default function Modal({
                 </div>
               )}
 
-              {/* Content */}
               <div className="p-6">{children}</div>
             </motion.div>
           </div>

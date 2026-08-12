@@ -1,14 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
+import {
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  ListChecks,
+  Loader2,
+  Play,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
-import toast from 'react-hot-toast';
 import { apiClient, getApiErrorMessage } from '@/lib/api';
-import { ChevronLeft, ChevronRight, Play, CheckCircle } from 'lucide-react';
-import type { QuestionSlot, Prompt, RunEvaluationRequest } from '@/types';
+import type { RunEvaluationRequest } from '@/types';
 
 interface EvaluationWizardProps {
   isOpen: boolean;
@@ -17,28 +27,30 @@ interface EvaluationWizardProps {
   onSuccess: () => void;
 }
 
+const steps = [
+  { number: 1, label: 'Questions' },
+  { number: 2, label: 'Options' },
+  { number: 3, label: 'Review' },
+];
+
 export default function EvaluationWizard({
   isOpen,
   onClose,
   projectId,
   onSuccess,
 }: EvaluationWizardProps) {
-  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedSlotId, setSelectedSlotId] = useState<string>('');
-  const [selectedPromptId, setSelectedPromptId] = useState<string>('');
+  const [selectedSlotId, setSelectedSlotId] = useState('');
+  const [selectedPromptId, setSelectedPromptId] = useState('');
   const [includeTraitTests, setIncludeTraitTests] = useState(true);
   const [traitTestCount, setTraitTestCount] = useState(5);
   const [isRunning, setIsRunning] = useState(false);
 
-  // Fetch question slots
   const { data: slots, isLoading: slotsLoading } = useQuery({
     queryKey: ['question-slots', projectId],
     queryFn: () => apiClient.getQuestionSlots(projectId),
     enabled: isOpen,
   });
-
-  // Fetch prompt
   const { data: prompt, isLoading: promptLoading } = useQuery({
     queryKey: ['prompt', projectId],
     queryFn: () => apiClient.getPrompt(projectId),
@@ -47,12 +59,25 @@ export default function EvaluationWizard({
   });
 
   useEffect(() => {
-    if (isOpen && prompt?.id) {
-      setSelectedPromptId(prompt.id);
-    }
-  }, [isOpen, prompt?.id]);
+    if (isOpen && prompt?.id && prompt.content.trim()) setSelectedPromptId(prompt.id);
+  }, [isOpen, prompt]);
 
-  const selectedSlot = slots?.find(s => s.id === selectedSlotId);
+  const selectedSlot = slots?.find((slot) => slot.id === selectedSlotId);
+  const totalTests = (selectedSlot?.questions.length || 0) + (includeTraitTests ? traitTestCount : 0);
+
+  const resetWizard = () => {
+    setCurrentStep(1);
+    setSelectedSlotId('');
+    setSelectedPromptId('');
+    setIncludeTraitTests(true);
+    setTraitTestCount(5);
+    onClose();
+  };
+
+  const closeWizard = () => {
+    if (isRunning) return;
+    resetWizard();
+  };
 
   const runEvaluationMutation = useMutation({
     mutationFn: () => {
@@ -66,13 +91,9 @@ export default function EvaluationWizard({
     },
     onSuccess: () => {
       setIsRunning(false);
-      toast.success('Evaluation completed successfully!');
+      toast.success('Evaluation completed');
       onSuccess();
-      handleClose();
-      // Redirect to history tab after 1 second
-      setTimeout(() => {
-        router.push(`/project/${projectId}?tab=history`);
-      }, 1000);
+      resetWizard();
     },
     onError: (error) => {
       setIsRunning(false);
@@ -80,327 +101,323 @@ export default function EvaluationWizard({
     },
   });
 
-  const handleClose = () => {
-    if (!isRunning) {
-      setCurrentStep(1);
-      setSelectedSlotId('');
-      setSelectedPromptId('');
-      setIncludeTraitTests(true);
-      setTraitTestCount(5);
-      onClose();
-    }
-  };
-
-  const handleNext = () => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleRunEvaluation = () => {
-    setIsRunning(true);
-    runEvaluationMutation.mutate();
-  };
-
-  const canProceedStep1 = selectedSlotId !== '';
-  const canProceedStep2 = Boolean(prompt && selectedPromptId);
+  const canContinue = currentStep === 1 ? Boolean(selectedSlotId) : Boolean(selectedPromptId);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={handleClose}
-      title="Run Evaluation"
-      size="lg"
-    >
-      <div className="space-y-6">
-        {/* Progress Steps */}
-        <div className="flex items-center justify-between">
-          {[1, 2, 3].map((step) => (
-            <div key={step} className="flex items-center flex-1">
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                step === currentStep
-                  ? 'border-primary-600 bg-primary-600 text-white'
-                  : step < currentStep
-                  ? 'border-green-600 bg-green-600 text-white'
-                  : 'border-gray-300 bg-white text-gray-400'
-              }`}>
-                {step < currentStep ? (
-                  <CheckCircle className="h-5 w-5" />
-                ) : (
-                  <span className="font-semibold">{step}</span>
-                )}
+    <Modal isOpen={isOpen} onClose={closeWizard} title="Configure evaluation" size="lg">
+      <div className="max-h-[calc(100svh-10rem)] overflow-y-auto px-1 pb-1 pr-2">
+        <div className="grid grid-cols-3 gap-2" aria-label="Evaluation setup progress">
+          {steps.map((step) => {
+            const isActive = currentStep === step.number;
+            const isComplete = currentStep > step.number;
+            return (
+              <div
+                key={step.number}
+                className={`rounded-xl border px-2 py-2.5 transition sm:px-3 ${
+                  isActive
+                    ? 'border-sky-300 bg-sky-50'
+                    : isComplete
+                      ? 'border-slate-300 bg-slate-50'
+                      : 'border-slate-200 bg-white'
+                }`}
+                aria-current={isActive ? 'step' : undefined}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`flex h-6 w-6 items-center justify-center rounded-lg text-[11px] font-semibold ${
+                      isActive
+                        ? 'bg-sky-700 text-white'
+                        : isComplete
+                          ? 'bg-slate-700 text-white'
+                          : 'bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    {isComplete ? <Check className="h-3.5 w-3.5" /> : step.number}
+                  </span>
+                  <span
+                    className={`min-w-0 truncate text-[10px] font-semibold sm:text-xs ${
+                      isActive ? 'text-sky-900' : 'text-slate-500'
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                </div>
               </div>
-              {step < 3 && (
-                <div className={`flex-1 h-1 mx-2 ${
-                  step < currentStep ? 'bg-green-600' : 'bg-gray-300'
-                }`} />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Step Labels */}
-        <div className="flex justify-between text-xs text-gray-600">
-          <span className={currentStep === 1 ? 'font-semibold text-primary-600' : ''}>
-            Select Slot
-          </span>
-          <span className={currentStep === 2 ? 'font-semibold text-primary-600' : ''}>
-            Configure
-          </span>
-          <span className={currentStep === 3 ? 'font-semibold text-primary-600' : ''}>
-            Review & Run
-          </span>
-        </div>
-
-        {/* Step Content */}
-        <div className="min-h-[300px]">
-          {/* Step 1: Select Question Slot */}
+        <div className="min-h-[320px] py-6">
           {currentStep === 1 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Select Question Slot</h3>
-              <p className="text-sm text-gray-600">
-                Choose which question slot to use for this evaluation
+            <section>
+              <div className="flex items-center gap-2">
+                <ListChecks className="h-4 w-4 text-sky-700" strokeWidth={1.8} />
+                <h3 className="text-lg font-semibold tracking-tight text-slate-950">Choose a question set</h3>
+              </div>
+              <p className="mt-1.5 text-sm leading-6 text-slate-500">
+                Every question in the selected set will be sent to the agent in its saved order.
               </p>
 
               {slotsLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+                <div className="flex justify-center py-16">
+                  <Loader2 className="h-7 w-7 animate-spin text-sky-700" />
                 </div>
-              ) : slots && slots.length > 0 ? (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {slots.map((slot) => (
-                    <label
-                      key={slot.id}
-                      className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                        selectedSlotId === slot.id
-                          ? 'border-primary-600 bg-primary-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="slot"
-                        value={slot.id}
-                        checked={selectedSlotId === slot.id}
-                        onChange={(e) => setSelectedSlotId(e.target.value)}
-                        className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
-                      />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">{slot.name}</div>
-                        {slot.description && (
-                          <div className="text-sm text-gray-600 mt-1">{slot.description}</div>
-                        )}
-                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                          <span>{slot.questions.length} questions</span>
-                          {slot.is_auto_generated && (
-                            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
-                              AI Generated
-                            </span>
+              ) : slots?.length ? (
+                <div className="mt-5 space-y-2.5">
+                  {slots.map((slot) => {
+                    const isSelected = selectedSlotId === slot.id;
+                    return (
+                      <label
+                        key={slot.id}
+                        className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition focus-within:ring-2 focus-within:ring-sky-500 focus-within:ring-offset-2 ${
+                          isSelected
+                            ? 'border-sky-400 bg-sky-50/70'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="slot"
+                          value={slot.id}
+                          checked={isSelected}
+                          onChange={(event) => setSelectedSlotId(event.target.value)}
+                          className="sr-only"
+                        />
+                        <span
+                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                            isSelected ? 'border-sky-600 bg-sky-600 text-white' : 'border-slate-300 bg-white'
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3" strokeWidth={2.5} />}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold text-slate-900">{slot.name}</span>
+                            {slot.is_auto_generated && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                                <Sparkles className="h-3 w-3" /> Generated
+                              </span>
+                            )}
+                          </div>
+                          {slot.description && (
+                            <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-500">{slot.description}</p>
                           )}
+                          <p className="mt-2 text-xs font-medium text-slate-400">
+                            {slot.questions.length} {slot.questions.length === 1 ? 'question' : 'questions'}
+                          </p>
                         </div>
-                      </div>
-                    </label>
-                  ))}
+                      </label>
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No question slots available</p>
-                  <p className="text-sm mt-1">Create a question slot first</p>
+                <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-12 text-center">
+                  <ListChecks className="mx-auto h-7 w-7 text-slate-400" />
+                  <p className="mt-3 text-sm font-semibold text-slate-700">No question sets available</p>
+                  <p className="mt-1 text-xs text-slate-500">Create a question set before starting an evaluation.</p>
                 </div>
               )}
-            </div>
+            </section>
           )}
 
-          {/* Step 2: Configure Options */}
           {currentStep === 2 && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold">Configure Evaluation Options</h3>
-
-              {/* Prompt Selection */}
+            <section className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Agent Prompt Context
-                </label>
-                {promptLoading ? (
-                  <div className="text-sm text-gray-500">Loading prompt...</div>
-                ) : prompt ? (
-                  <div className="space-y-2">
-                    <label className="flex items-start p-3 border-2 border-primary-600 bg-primary-50 rounded-lg">
-                      <input
-                        type="radio"
-                        name="prompt"
-                        value={prompt.id}
-                        checked={selectedPromptId === prompt.id}
-                        onChange={(e) => setSelectedPromptId(e.target.value)}
-                        className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500"
-                      />
-                      <div className="ml-3 flex-1">
-                        <div className="font-medium text-gray-900">Use Current Agent Prompt</div>
-                        <div className="text-xs text-gray-600 mt-1 line-clamp-2">
-                          {prompt.content.substring(0, 100)}...
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Required evaluator context for prompt-adherence scoring.
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
-                    Upload an agent prompt before running an evaluation.
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-sky-700" strokeWidth={1.8} />
+                  <h3 className="text-lg font-semibold tracking-tight text-slate-950">Set evaluation context</h3>
+                </div>
+                <p className="mt-1.5 text-sm leading-6 text-slate-500">
+                  The saved prompt provides the expected behavior. Optional probes test common risk areas.
+                </p>
               </div>
 
-              {/* Trait Tests */}
-              <div className="border-t pt-6">
-                <div className="flex items-start gap-3 mb-4">
-                  <input
-                    type="checkbox"
-                    id="includeTraitTests"
-                    checked={includeTraitTests}
-                    onChange={(e) => setIncludeTraitTests(e.target.checked)}
-                    className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <div className="flex-1">
-                    <label htmlFor="includeTraitTests" className="font-medium text-gray-900 cursor-pointer">
-                      Include Trait Tests
-                    </label>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Test additional traits like security, honesty, and speed
-                    </p>
+              {promptLoading ? (
+                <div className="h-28 animate-pulse rounded-2xl bg-slate-100" />
+              ) : prompt?.content?.trim() ? (
+                <article className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600">
+                      <FileText className="h-4 w-4" strokeWidth={1.8} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-slate-900">Current agent prompt</h4>
+                        <CheckCircle2 className="h-4 w-4 text-sky-700" />
+                      </div>
+                      <p className="mt-1.5 line-clamp-3 whitespace-pre-wrap text-xs leading-5 text-slate-600">
+                        {prompt.content}
+                      </p>
+                      <p className="mt-2 text-xs font-medium text-slate-500">Used for prompt-adherence scoring</p>
+                    </div>
                   </div>
+                </article>
+              ) : (
+                <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                  <span>Add an agent prompt before running an evaluation.</span>
+                </div>
+              )}
+
+              <article className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                      <Sparkles className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-900">Behavior probes</h4>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Add built-in security, honesty, and prompt-adherence questions.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={includeTraitTests}
+                    onClick={() => setIncludeTraitTests((current) => !current)}
+                    className={`relative h-6 w-11 shrink-0 rounded-full transition focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 ${
+                      includeTraitTests ? 'bg-sky-700' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                        includeTraitTests ? 'translate-x-5' : 'translate-x-0.5'
+                      }`}
+                    />
+                    <span className="sr-only">Include behavior probes</span>
+                  </button>
                 </div>
 
                 {includeTraitTests && (
-                  <div className="ml-7 space-y-3">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Number of Trait Tests
-                    </label>
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="range"
-                        min="1"
-                        max="10"
-                        value={traitTestCount}
-                        onChange={(e) => setTraitTestCount(parseInt(e.target.value))}
-                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
-                      />
-                      <span className="text-2xl font-bold text-primary-600 w-12 text-center">
+                  <div className="mt-5 border-t border-slate-100 pt-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <label htmlFor="trait-test-count" className="text-sm font-medium text-slate-700">
+                        Additional probes
+                      </label>
+                      <span className="flex h-8 min-w-8 items-center justify-center rounded-lg bg-slate-950 px-2 text-sm font-semibold text-white">
                         {traitTestCount}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      Additional questions to test security, honesty, and other traits
-                    </p>
+                    <input
+                      id="trait-test-count"
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={traitTestCount}
+                      onChange={(event) => setTraitTestCount(Number(event.target.value))}
+                      className="mt-3 h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-sky-700"
+                    />
+                    <div className="mt-1 flex justify-between text-[11px] text-slate-400">
+                      <span>1</span>
+                      <span>10</span>
+                    </div>
                   </div>
                 )}
-              </div>
-            </div>
+              </article>
+            </section>
           )}
 
-          {/* Step 3: Review & Run */}
           {currentStep === 3 && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold">Review & Run Evaluation</h3>
-              <p className="text-sm text-gray-600">
-                Review your selections before running the evaluation
+            <section>
+              <div className="flex items-center gap-2">
+                <Play className="h-4 w-4 text-sky-700" strokeWidth={1.8} />
+                <h3 className="text-lg font-semibold tracking-tight text-slate-950">Review the run</h3>
+              </div>
+              <p className="mt-1.5 text-sm leading-6 text-slate-500">
+                Confirm the scope before APREP starts calling the endpoint.
               </p>
 
-              <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                <div>
-                  <div className="text-xs font-medium text-gray-500 uppercase">Question Slot</div>
-                  <div className="mt-1 font-medium text-gray-900">{selectedSlot?.name}</div>
-                  <div className="text-sm text-gray-600">{selectedSlot?.questions.length} questions</div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="text-xs font-medium text-gray-500 uppercase">Prompt</div>
-                  <div className="mt-1 text-sm text-gray-900">
-                    Using current agent prompt as evaluator context
+              <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+                <div className="grid gap-px bg-slate-200 sm:grid-cols-2">
+                  <div className="bg-white p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Question set</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{selectedSlot?.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">{selectedSlot?.questions.length || 0} saved questions</p>
                   </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="text-xs font-medium text-gray-500 uppercase">Trait Tests</div>
-                  <div className="mt-1 text-sm text-gray-900">
-                    {includeTraitTests ? `Yes (${traitTestCount} additional tests)` : 'No'}
+                  <div className="bg-white p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Behavior probes</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                      {includeTraitTests ? `${traitTestCount} included` : 'Not included'}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">Optional adversarial checks</p>
                   </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="text-xs font-medium text-gray-500 uppercase">Total Tests</div>
-                  <div className="mt-1 text-2xl font-bold text-primary-600">
-                    {(selectedSlot?.questions.length || 0) + (includeTraitTests ? traitTestCount : 0)}
+                  <div className="bg-white p-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Prompt context</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">Current prompt</p>
+                    <p className="mt-1 text-xs text-slate-500">Used for adherence scoring</p>
+                  </div>
+                  <div className="bg-slate-950 p-4 text-white">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Total endpoint calls</p>
+                    <p className="mt-1 text-3xl font-semibold tracking-tight">{totalTests}</p>
+                    <p className="mt-1 text-xs text-slate-400">One call per test</p>
                   </div>
                 </div>
               </div>
 
               {isRunning && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                    <div>
-                      <p className="text-sm font-medium text-blue-900">Running evaluation...</p>
-                      <p className="text-xs text-blue-700">This may take a few moments</p>
-                    </div>
+                <div className="mt-4 flex items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-sky-700" />
+                  <div>
+                    <p className="text-sm font-semibold text-sky-950">Evaluation in progress</p>
+                    <p className="mt-0.5 text-xs text-sky-700">Keep this window open while responses are collected.</p>
                   </div>
                 </div>
               )}
-            </div>
+            </section>
           )}
         </div>
 
-        {/* Navigation Buttons */}
-        <div className="flex justify-between pt-6 border-t">
-          <div>
+        <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 border-t border-slate-100 bg-white/95 px-1 pt-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex sm:min-w-24">
             {currentStep > 1 && (
               <Button
                 type="button"
-                variant="secondary"
-                onClick={handleBack}
+                variant="ghost"
+                onClick={() => setCurrentStep((step) => step - 1)}
                 disabled={isRunning}
+                className="w-full rounded-xl text-slate-600 hover:bg-slate-100 sm:w-auto"
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
+                <ChevronLeft className="mr-1 h-4 w-4" />
                 Back
               </Button>
             )}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <Button
               type="button"
               variant="secondary"
-              onClick={handleClose}
+              onClick={closeWizard}
               disabled={isRunning}
+              className="flex-1 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 sm:flex-none"
             >
               Cancel
             </Button>
-
             {currentStep < 3 ? (
               <Button
                 type="button"
-                onClick={handleNext}
-                disabled={currentStep === 1 ? !canProceedStep1 : !canProceedStep2}
+                onClick={() => setCurrentStep((step) => step + 1)}
+                disabled={!canContinue}
+                className="flex-1 rounded-xl bg-slate-950 hover:bg-slate-800 focus:ring-slate-500 sm:flex-none"
               >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
+                Continue
+                <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             ) : (
               <Button
                 type="button"
-                onClick={handleRunEvaluation}
+                onClick={() => {
+                  setIsRunning(true);
+                  runEvaluationMutation.mutate();
+                }}
                 disabled={isRunning}
                 isLoading={isRunning}
+                className="flex-1 rounded-xl bg-slate-950 hover:bg-slate-800 focus:ring-slate-500 sm:flex-none"
               >
-                <Play className="h-4 w-4 mr-2" />
-                Run Evaluation
+                <Play className="mr-1.5 h-4 w-4" />
+                Run evaluation
               </Button>
             )}
           </div>
@@ -409,5 +426,3 @@ export default function EvaluationWizard({
     </Modal>
   );
 }
-
-// Made with Bob

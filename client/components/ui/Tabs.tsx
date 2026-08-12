@@ -1,56 +1,70 @@
 'use client';
 
 import { ReactNode, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Tab {
   id: string;
   label: string;
   content: ReactNode;
+  icon?: LucideIcon;
 }
 
 interface TabsProps {
   tabs: Tab[];
   defaultTab?: string;
+  activeTab?: string;
   onChange?: (tabId: string) => void;
 }
 
-export default function Tabs({ tabs, defaultTab, onChange }: TabsProps) {
-  const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
+export default function Tabs({ tabs, defaultTab, activeTab, onChange }: TabsProps) {
+  const [internalActiveTab, setInternalActiveTab] = useState(defaultTab || tabs[0]?.id);
+  const selectedTab = activeTab ?? internalActiveTab;
 
   const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
+    setInternalActiveTab(tabId);
     onChange?.(tabId);
   };
 
   return (
     <div className="w-full">
-      {/* Tab Headers */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={cn(
-                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors',
-                activeTab === tab.id
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm shadow-slate-900/[0.03]">
+        <nav className="flex min-w-max gap-1" aria-label="Project sections" role="tablist">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = selectedTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id)}
+                role="tab"
+                data-project-guide={tab.id}
+                aria-selected={isActive}
+                aria-controls={`${tab.id}-panel`}
+                className={cn(
+                  'inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1',
+                  isActive
+                    ? 'bg-slate-950 text-white shadow-sm'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-950'
+                )}
+              >
+                {Icon && <Icon className="h-4 w-4" strokeWidth={1.8} />}
+                {tab.label}
+              </button>
+            );
+          })}
         </nav>
       </div>
 
-      {/* Tab Content */}
-      <div className="mt-6">
+      <div className="mt-5 sm:mt-6">
         {tabs.map((tab) => (
           <div
             key={tab.id}
-            className={cn(activeTab === tab.id ? 'block' : 'hidden')}
+            id={`${tab.id}-panel`}
+            role="tabpanel"
+            className={cn(selectedTab === tab.id ? 'block' : 'hidden')}
           >
             {tab.content}
           </div>

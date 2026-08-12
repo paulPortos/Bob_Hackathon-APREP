@@ -109,10 +109,11 @@ class EvaluatorService:
             
             # Run trait tests if requested
             if include_trait_tests:
-                trait_types = ["security", "honesty", "prompt_adherence"]
-                tests_per_trait = max(1, trait_test_count // len(trait_types))
-                
-                for trait_type in trait_types:
+                trait_distribution = scoring_service.allocate_trait_tests(trait_test_count)
+
+                for trait_type, tests_per_trait in trait_distribution.items():
+                    if tests_per_trait == 0:
+                        continue
                     trait_questions = scoring_service.generate_trait_test_questions(
                         trait_type=trait_type,
                         count=tests_per_trait
@@ -207,8 +208,8 @@ class EvaluatorService:
             agent_answer, response_time_ms, error = await agent_endpoint_client.call_http_endpoint(
                 url=project.endpoint_url,
                 message=question_text,
-                request_field=project.request_field_name,
-                response_field=project.response_field_name,
+                request_body_template=project.request_body_template,
+                response_path=project.response_path,
                 token=token
             )
         

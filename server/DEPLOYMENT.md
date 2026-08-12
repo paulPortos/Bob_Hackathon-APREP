@@ -46,6 +46,7 @@ OLLAMA_API_KEY=YOUR_OLLAMA_CLOUD_KEY
 
 MAX_REQUEST_BODY_BYTES=1048576
 MAX_AGENT_RESPONSE_BYTES=524288
+MAX_PROJECTS_PER_USER=2
 
 KEEP_ALIVE_ENABLED=false
 BASE_URL=
@@ -88,9 +89,11 @@ Most hosting platforms provide a `PORT` environment variable. Use that platform-
 
 `ALLOWED_HOSTS` must list the API host name served by the reverse proxy. Terminate HTTPS at that proxy, redirect HTTP to HTTPS, and do not expose PostgreSQL to the public internet.
 
-`AGENT_ENDPOINT_ALLOWED_HOSTS` is a required, exact allow-list for agent endpoints that the public demo may evaluate. This prevents users from turning the API into a request tool for private networks. Use only domains you control, serve them over HTTPS, and do not use wildcards.
+`AGENT_ENDPOINT_ALLOWED_HOSTS` is a required, exact allow-list for agent endpoints that the public demo may evaluate. This prevents users from turning the API into a request tool for private networks. Add only domains you deliberately trust, require HTTPS, and do not use wildcards.
 
 The server sets basic API security headers and a 1 MiB request limit. Keep equivalent request-size and rate limits at the reverse proxy/CDN as well; app-level limiting only starts after traffic reaches the server.
+
+Each account can keep two projects. Deleting a project frees a slot.
 
 The per-IP abuse controls use the direct client address by default. Only configure forwarded-IP handling when the reverse proxy source addresses are known:
 

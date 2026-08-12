@@ -6,6 +6,7 @@ from typing import Optional
 
 import httpx
 
+from app.core.agent_payload import AgentPayloadError, build_request_body, extract_response_value
 from app.core.config import settings
 from app.core.endpoint_security import validate_outbound_agent_endpoint
 from app.infrastructure.http_client import http_client_pool
@@ -21,25 +22,26 @@ class AgentEndpointClient:
         self,
         url: str,
         message: str,
-        request_field: str = "message",
-        response_field: str = "answer",
+        request_body_template: str,
+        response_path: str,
         token: Optional[str] = None,
     ) -> tuple[Optional[str], int, Optional[str]]:
         headers = {"Authorization": f"Bearer {token}"} if token else {}
         started_at = time.time()
 
         try:
+            request_body = build_request_body(request_body_template, message)
             await validate_outbound_agent_endpoint(url)
             client = await http_client_pool.get_client()
             async with client.stream(
                 "POST",
                 url,
-                json={request_field: message},
+                json=request_body,
                 headers=headers,
                 timeout=self.timeout,
             ) as response:
                 elapsed_ms = int((time.time() - started_at) * 1000)
-                if response.status_code != 200:
+                if not 200 <= response.status_code < 300:
                     return None, elapsed_ms, f"Endpoint returned HTTP {response.status_code}"
                 content_length = response.headers.get("content-length")
                 if content_length and int(content_length) > settings.max_agent_response_bytes:
@@ -50,14 +52,12 @@ class AgentEndpointClient:
                     if len(body) > settings.max_agent_response_bytes:
                         return None, elapsed_ms, "Endpoint response is too large"
             payload = json.loads(body)
-            if not isinstance(payload, dict):
-                return None, elapsed_ms, "Endpoint response must be a JSON object"
-            agent_answer = payload.get(response_field)
-            if agent_answer is None:
-                return None, elapsed_ms, f"Response missing '{response_field}' field"
-            if not isinstance(agent_answer, str):
-                return None, elapsed_ms, f"Response field '{response_field}' must be a string"
+            agent_answer = extract_response_value(payload, response_path)
             return agent_answer, elapsed_ms, None
+        except AgentPayloadError as error:
+            return None, int((time.time() - started_at) * 1000), str(error)
+        except json.JSONDecodeError:
+            return None, int((time.time() - started_at) * 1000), "Endpoint returned invalid JSON"
         except httpx.TimeoutException:
             return None, int((time.time() - started_at) * 1000), "Request timeout"
         except httpx.RequestError as error:
