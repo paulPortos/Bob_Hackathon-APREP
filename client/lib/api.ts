@@ -91,9 +91,17 @@ class ApiClient {
       (response) => response,
       (error: AxiosError) => {
         if (error.response?.status === 401) {
-          // Clear token and redirect to auth
+          const requestPath = error.config?.url?.split('?')[0].replace(/\/$/, '');
+          const isLoginRequest = requestPath === '/auth/login';
+
+          // A rejected login is an expected form error. Let the auth page
+          // handle it in place so its entered values are not lost to a reload.
           this.clearAuth();
-          if (typeof window !== 'undefined') {
+          if (
+            typeof window !== 'undefined' &&
+            !isLoginRequest &&
+            window.location.pathname.replace(/\/$/, '') !== '/auth'
+          ) {
             window.location.href = '/auth';
           }
         }

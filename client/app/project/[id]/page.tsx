@@ -112,15 +112,20 @@ function MetricCard({
   detail: string;
 }) {
   return (
-    <article className="min-w-0 bg-white p-4 sm:p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+    <article className="min-w-0 bg-white p-4 sm:p-5 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-x-3 lg:p-4">
+      <div className="flex items-center justify-between lg:contents">
+        <div className="min-w-0 lg:order-2">
+          <p className="text-sm font-medium text-slate-500">{label}</p>
+          <p className="mt-1 hidden truncate text-xs text-slate-400 lg:block">{detail}</p>
+        </div>
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 lg:order-1">
           <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
         </span>
       </div>
-      <p className="mt-4 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
-      <p className="mt-1 text-xs text-slate-400">{detail}</p>
+      <p className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 lg:order-3 lg:mt-0 lg:text-2xl">
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-slate-400 lg:hidden">{detail}</p>
     </article>
   );
 }
@@ -151,14 +156,11 @@ function OverviewTab({ projectId }: { projectId: string }) {
   const questionCount = slots?.reduce((total, slot) => total + slot.questions.length, 0) ?? 0;
 
   return (
-    <div className="space-y-6">
-      <SectionHeader
-        eyebrow="Project snapshot"
-        title="Overview"
-        description="Review readiness, connection settings, and the API contract used for every evaluation."
-      />
-
-      <section className="grid grid-cols-1 gap-px overflow-hidden rounded-3xl border border-slate-200 bg-slate-200 shadow-sm shadow-slate-900/[0.03] sm:grid-cols-3">
+    <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(14rem,0.34fr)_minmax(0,1fr)]">
+      <section
+        className="grid grid-cols-1 gap-px overflow-hidden rounded-3xl border border-slate-200 bg-slate-200 shadow-sm shadow-slate-900/[0.03] sm:grid-cols-3 lg:grid-cols-1"
+        aria-label="Project readiness"
+      >
         <MetricCard
           icon={FileText}
           label="Agent prompt"
